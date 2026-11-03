@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile - Mood Analysis Diary</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;width:100%}
+    body{
+      font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      min-height:100vh;
+      padding:20px;
+      opacity:1;
+    }
+
+    .dashboard-wrapper{display:flex;gap:30px;width:100%;max-width:1400px;margin:0 auto;align-items:flex-start}
+    .sidebar{display:flex;flex-direction:column;gap:15px;width:220px;flex-shrink:0}
+    .nav-box{background:white;border-radius:10px;padding:0;box-shadow:0 4px 15px rgba(0,0,0,.15);overflow:hidden;min-height:60px;display:flex;align-items:center;justify-content:center}
+    .nav-box a,.nav-box button{display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:18px 20px;text-decoration:none;color:#333;font-weight:600;font-size:14px;border:none;background:white;cursor:pointer;transition:all .3s}
+    .nav-box a:hover,.nav-box button:hover{background:#667eea;color:white;transform:translateX(5px);box-shadow:0 6px 20px rgba(102,126,234,.3)}
+    .nav-box.logout button{background:#dc3545;color:white}
+    .nav-box a::before { content: ''; display:inline-block; width:24px; height:24px; margin-right:8px; background-size:24px; background-repeat:no-repeat; background-position:center; flex-shrink:0; }
+    .nav-box:nth-child(1) a::before { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23333333"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>'); }
+    /* ใช้ SVG ลายเดียวกันกับรูปโปรไฟล์หลัก */
+    .nav-box:nth-child(2) a::before { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23333333"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>'); }
+    .nav-box:nth-child(3) a::before { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23333333"><path d="M16 4h-1V2H9v2H8C6.9 4 6 4.9 6 6v2h12V6c0-1.1-.9-2-2-2zm2 6H6v10c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V10zm-3 7H9v-2h6v2z"/></svg>'); }
+    .nav-box:nth-child(4) a::before { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23333333"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H6v-2h14v2zm0-3H6V9h14v2zm0-3H6V6h14v2z"/></svg>'); }
+    .nav-box a:hover::before { filter: brightness(0) invert(1); }
+    .nav-box.logout button::before { content: '🚪'; margin-right:8px; font-size:20px; }
+
+    .center-content{flex:1;display:flex;justify-content:center;align-items:flex-start;min-height:600px}
+    .container{width:100%;max-width:900px;background:#fff;border-radius:14px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+    .profile-wrap{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+    .profile-card{flex:0 0 320px;background:linear-gradient(180deg,#ffffff,#fbfbff);border-radius:12px;padding:20px;display:flex;flex-direction:column;align-items:center}
+    
+    .avatar-frame{width:120px;height:120px;border-radius:50%;overflow:hidden;background:linear-gradient(180deg,#f0f4ff,#ffffff);display:flex;align-items:center;justify-content:center;border:6px solid rgba(102,126,234,0.12);margin-bottom:14px}
+    .avatar-frame .color-circle{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    .avatar-frame .color-circle svg{width:64px;height:64px;display:block}
+    
+    .btn{background:#667eea;color:#fff;padding:10px 16px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+    .btn.secondary{background:#f0f0f0;color:#333;border:1px solid #e6e6e6;box-shadow:none}
+    .info-card{flex:1 1 540px;display:flex;flex-direction:column;gap:12px}
+    .field{background:#fff;border-radius:10px;padding:12px 14px;border:1px solid #eee;display:flex;flex-direction:column;gap:8px}
+    label{font-size:13px;color:#666;font-weight:600}
+    input[type="text"], input[type="email"], input[type="password"]{padding:10px 12px;border-radius:8px;border:1px solid #ddd;font-size:15px;width:100%}
+    .actions{margin-top:12px;display:flex;gap:12px;align-items:center}
+    .stats{margin-top:22px;text-align:center;padding:14px;border-radius:10px;background:linear-gradient(90deg, rgba(102,126,234,0.05), rgba(118,75,162,0.03));color:#333;font-weight:700}
+    .upload-msg{font-size:13px;margin-top:8px;color:#b33}
+
+    .color-palette{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .color-swatch{width:34px;height:34px;border-radius:8px;border:2px solid rgba(255,255,255,0.6);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.12); outline: none}
+    .color-swatch:focus{box-shadow:0 0 0 3px rgba(102,126,234,0.25)}
+    .color-controls{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
+
+    .small-muted{font-size:13px;color:#888;margin-top:6px}
+    @media (max-width:880px){ .dashboard-wrapper{flex-direction:column;align-items:center} .sidebar{order:2} .center-content{order:1;width:100%} .container{padding:18px} }
+  </style>
+</head>
+<body>
+  <div class="dashboard-wrapper">
+    <aside class="sidebar" aria-hidden="false">
+        <div class="nav-box"><a href="dashboard.html">Main Page</a></div>
+        <div class="nav-box"><a href="profile.html">User Profile</a></div>
+        <div class="nav-box"><a href="Radar Chart.html">Radar Chart</a></div>
+        <div class="nav-box"><a href="feedback.html">Feedback</a></div>
+        <div class="nav-box logout"><button id="logoutSidebarBtn" type="button">Logout</button></div>
+    </aside>
+
+    <main class="center-content">
+      <div class="container" role="main">
+        <h2 style="margin-bottom:14px;color:#333">โปรไฟล์ของฉัน</h2>
+
+        <div class="profile-wrap">
+          <section class="profile-card" aria-labelledby="profileTitle">
+
+            <div class="avatar-frame" id="avatarFrame" title="Profile color">
+              <!-- SVG Dynamically injected -->
+            </div>
+
+            <div style="width:100%;text-align:center">
+              <label for="avatarColor" style="font-size:13px;color:#666">เลือกสีโปรไฟล์</label>
+
+              <div class="color-controls">
+                <input type="color" id="avatarColor" value="#667eea" title="เลือกสี" />
+                <button id="randomColorBtn" class="btn secondary" type="button">สุ่มสี</button>
+                <button id="clearColorBtn" class="btn secondary" type="button">ล้างสี</button>
+              </div>
+
+              <div class="color-palette" id="colorPalette" aria-hidden="false" title="สีแนะนำ" role="list">
+                <div class="color-swatch" data-color="#667eea" style="background:#667eea" role="button" tabindex="0" aria-label="สีม่วง"></div>
+                <div class="color-swatch" data-color="#764ba2" style="background:#764ba2" role="button" tabindex="0" aria-label="สีม่วงเข้ม"></div>
+                <div class="color-swatch" data-color="#ff6b6b" style="background:#ff6b6b" role="button" tabindex="0" aria-label="สีแดง"></div>
+                <div class="color-swatch" data-color="#ffa94d" style="background:#ffa94d" role="button" tabindex="0" aria-label="สีส้ม"></div>
+                <div class="color-swatch" data-color="#51cf66" style="background:#51cf66" role="button" tabindex="0" aria-label="สีเขียว"></div>
+                <div class="color-swatch" data-color="#339af0" style="background:#339af0" role="button" tabindex="0" aria-label="น้ำเงิน"></div>
+                <div class="color-swatch" data-color="#f783ac" style="background:#f783ac" role="button" tabindex="0" aria-label="สีชมพู"></div>
+              </div>
+
+              <div id="uploadMsg" class="upload-msg" role="status" aria-live="polite"></div>
+            </div>
+
+          </section>
+
+          <section class="info-card" aria-labelledby="infoTitle">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <h3 id="infoTitle" style="color:#333">ข้อมูลผู้ใช้</h3>
+              <button id="logoutBtn" class="btn secondary">ออกจากระบบ</button>
+            </div>
+
+            <div class="field">
+              <label for="nicknameInput">ชื่อเล่น</label>
+              <input id="nicknameInput" type="text" placeholder="ชื่อเล่น" />
+            </div>
+
+            <div class="field">
+              <label for="emailInput">อีเมล</label>
+              <input id="emailInput" type="email" disabled />
+            </div>
+
+            <div class="actions">
+              <button id="saveProfileBtn" class="btn">บันทึกข้อมูลโปรไฟล์</button>
+              <div id="saveStatus" class="small-muted" style="align-self:center;margin-left:8px"></div>
+            </div>
+
+            <div class="stats">
+              <div>จำนวนบันทึก</div>
+              <div id="entryCount" style="font-size:22px;margin-top:6px">0</div>
+            </div>
+
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://moubjbxzopdqwoufpont.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      let supabase = null;
+      try {
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+      } catch (e) {
+        console.error('Error initializing Supabase client', e);
+      }
+
+      const avatarFrame = document.getElementById('avatarFrame');
+      const avatarColorInput = document.getElementById('avatarColor');
+      const randomColorBtn = document.getElementById('randomColorBtn');
+      const clearColorBtn = document.getElementById('clearColorBtn');
+      const colorPalette = document.getElementById('colorPalette');
+      const uploadMsg = document.getElementById('uploadMsg');
+
+      const nicknameInput = document.getElementById('nicknameInput');
+      const emailInput = document.getElementById('emailInput');
+
+      const saveProfileBtn = document.getElementById('saveProfileBtn');
+      const saveStatus = document.getElementById('saveStatus');
+      const entryCountEl = document.getElementById('entryCount');
+
+      const logoutBtn = document.getElementById('logoutBtn');
+      const logoutSidebarBtn = document.getElementById('logoutSidebarBtn');
+
+      let currentUser = null;
+      let selectedColor = null;
+      let profileRow = null;
+
+      // ปรับจูน Vector Path ให้คมชัดและสเกลตรงกับ sidebar
+      function getAvatarSVG() {
+        return `<svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+      }
+
+      function showAvatarColor(color) {
+        avatarFrame.innerHTML = '';
+        const circle = document.createElement('div');
+        circle.className = 'color-circle';
+        circle.style.background = color || '#667eea';
+        circle.innerHTML = getAvatarSVG();
+        avatarFrame.appendChild(circle);
+      }
+
+      function pickRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+        return color;
+      }
+
+      colorPalette.addEventListener('click', async (ev) => {
+        const sw = ev.target.closest('.color-swatch');
+        if (!sw) return;
+        await handleSelectColor(sw.getAttribute('data-color'));
+      });
+
+      colorPalette.addEventListener('keydown', async (ev) => {
+        const sw = ev.target.closest('.color-swatch');
+        if (!sw) return;
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          await handleSelectColor(sw.getAttribute('data-color'));
+        }
+      });
+
+      avatarColorInput.addEventListener('input', () => {
+        const c = avatarColorInput.value;
+        selectedColor = c;
+        showAvatarColor(c);
+      });
+
+      avatarColorInput.addEventListener('change', async () => {
+        const c = avatarColorInput.value;
+        selectedColor = c;
+        uploadMsg.innerText = 'กำลังบันทึกสี...';
+        try {
+          if (supabase && currentUser) await saveColorToProfile(c);
+          uploadMsg.innerText = supabase ? 'บันทึกสีเรียบร้อย' : 'ต้องล็อกอินเพื่อบันทึก';
+        } catch (e) {
+          uploadMsg.innerText = 'ไม่สามารถบันทึกสีได้';
+        }
+        setTimeout(()=> uploadMsg.innerText = '', 1500);
+      });
+
+      randomColorBtn.addEventListener('click', async () => {
+        const c = pickRandomColor();
+        selectedColor = c;
+        avatarColorInput.value = c;
+        showAvatarColor(c);
+        uploadMsg.innerText = 'กำลังบันทึกสี...';
+        try {
+          if (supabase && currentUser) await saveColorToProfile(c);
+          uploadMsg.innerText = supabase ? 'บันทึกสีเรียบร้อย' : 'ต้องล็อกอินเพื่อบันทึก';
+        } catch (e) {
+          uploadMsg.innerText = 'ไม่สามารถบันทึกสีได้';
+        }
+        setTimeout(()=> uploadMsg.innerText = '', 1500);
+      });
+
+      clearColorBtn.addEventListener('click', async () => {
+        selectedColor = null;
+        avatarColorInput.value = '#667eea';
+        showAvatarColor('#667eea');
+        uploadMsg.innerText = '';
+        if (!supabase || !currentUser) return;
+        try {
+          const payload = { user_id: currentUser.id, avatar_color: null, updated_at: new Date().toISOString() };
+          await supabase.from('profiles').upsert([payload], { onConflict: 'user_id' });
+          uploadMsg.innerText = 'ล้างสีเรียบร้อย';
+        } catch (e) {
+          uploadMsg.innerText = 'ไม่สามารถล้างสีได้';
+        }
+        setTimeout(()=> uploadMsg.innerText = '', 1200);
+      });
+
+      async function handleSelectColor(c) {
+        selectedColor = c;
+        avatarColorInput.value = c;
+        showAvatarColor(c);
+        uploadMsg.innerText = 'กำลังบันทึกสี...';
+        try {
+          if (supabase && currentUser) await saveColorToProfile(c);
+          uploadMsg.innerText = supabase ? 'บันทึกสีเรียบร้อย' : 'ต้องล็อกอินเพื่อบันทึก';
+        } catch (e) {
+          uploadMsg.innerText = 'ไม่สามารถบันทึกสีได้';
+        }
+        setTimeout(()=> uploadMsg.innerText = '', 1500);
+      }
+
+      saveProfileBtn.addEventListener('click', async () => {
+        saveStatus.innerText = '';
+        const nick = nicknameInput.value.trim();
+        if (!supabase || !currentUser) return alert('ต้องล็อกอินเพื่อบันทึกข้อมูล');
+        const payload = {
+          user_id: currentUser.id,
+          nickname: nick || null,
+          avatar_color: selectedColor || null,
+          updated_at: new Date().toISOString()
+        };
+        try {
+          const { data, error } = await supabase.from('profiles').upsert([payload], { onConflict: 'user_id' }).select();
+          if (error) throw error;
+          saveStatus.innerText = 'บันทึกเรียบร้อย';
+          setTimeout(()=> saveStatus.innerText = '', 1800);
+          showAvatarColor(selectedColor || '#667eea');
+        } catch (err) {
+          alert('เกิดข้อผิดพลาดขณะบันทึกข้อมูล');
+        }
+      });
+
+      const signOutAndRedirect = async () => {
+        try { if (supabase) await supabase.auth.signOut(); } catch (e) {}
+        localStorage.clear(); sessionStorage.clear(); window.location.replace('index.html');
+      };
+      if (logoutBtn) logoutBtn.addEventListener('click', signOutAndRedirect);
+      if (logoutSidebarBtn) logoutSidebarBtn.addEventListener('click', signOutAndRedirect);
+
+      async function saveColorToProfile(color) {
+        if (!supabase || !currentUser) return;
+        const payload = { user_id: currentUser.id, avatar_color: color, updated_at: new Date().toISOString() };
+        await supabase.from('profiles').upsert([payload], { onConflict: 'user_id' });
+      }
+
+      async function checkAuth() {
+        if (!supabase) return null;
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (!data || !data.session) {
+            window.location.replace('index.html');
+            return null;
+          }
+          return data.session.user;
+        } catch (err) {
+          window.location.replace('index.html');
+          return null;
+        }
+      }
+
+      async function loadProfileAndStats() {
+        currentUser = await checkAuth();
+        if (!currentUser) {
+          showAvatarColor('#667eea');
+          return;
+        }
+        emailInput.value = currentUser.email || '';
+
+        try {
+          const { data } = await supabase.from('profiles').select('*').eq('user_id', currentUser.id).limit(1);
+          if (data && data.length > 0) {
+            nicknameInput.value = data[0].nickname || '';
+            selectedColor = data[0].avatar_color || null;
+            if (selectedColor) avatarColorInput.value = selectedColor;
+            showAvatarColor(selectedColor || '#667eea');
+          } else {
+            showAvatarColor('#667eea');
+          }
+        } catch (e) {}
+
+        try {
+          const { data: entriesData } = await supabase.from('diary_entries').select('id').eq('user_id', currentUser.id);
+          entryCountEl.innerText = (entriesData && entriesData.length) ? entriesData.length : 0;
+        } catch (e) { entryCountEl.innerText = '0'; }
+      }
+
+      (async () => {
+        await loadProfileAndStats();
+      })();
+    });
+  </script>
+</body>
+</html>

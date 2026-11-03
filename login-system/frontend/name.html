@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>User Name - JaiCare</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        /* background image */
+        .bg-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        /* name container on top */
+        .name-container { 
+            position: relative;
+            z-index: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Fade out animation when transitioning */
+        body.transition-out {
+            animation: fadeOut 0.6s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        .name-container h1 { 
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .name-container p { 
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group { 
+            margin-bottom: 20px;
+        }
+
+        .form-group label { 
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input { 
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus { 
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .form-group input::placeholder {
+            color: #999;
+        }
+
+        .message-box { 
+            padding: 12px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+            animation: slideDown 0.3s;
+        }
+
+        .message-box.show { 
+            display: block;
+        }
+
+        .message-box.error { 
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message-box.success { 
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        @keyframes slideDown { 
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .continue-btn { 
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Ripple effect on hover */
+        .continue-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .continue-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .continue-btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .continue-btn:active {
+            transform: translateY(0);
+        }
+
+        .button-text {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Loading state */
+        .continue-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .continue-btn.loading .button-text {
+            display: none;
+        }
+
+        .spinner {
+            display: none;
+            position: relative;
+            z-index: 1;
+            width: 20px;
+            height: 20px;
+        }
+
+        .continue-btn.loading .spinner {
+            display: block;
+        }
+
+        .spinner::after {
+            content: '';
+            display: block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            border-color: white transparent white transparent;
+            animation: spin 1.2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .skip-link { 
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .skip-link a { 
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .skip-link a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 420px) {
+            .name-container { 
+                padding: 24px;
+                margin: 12px;
+            }
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Background Image -->
+    <div class="bg-image" id="bgImage" aria-hidden="true"></div>
+
+    <!-- Name Container -->
+    <div class="name-container">
+        <h1>Welcome!</h1>
+        <p>What's your name?</p>
+
+        <div id="statusMessage" class="message-box"></div>
+
+        <div class="form-group">
+            <label for="Name">Name</label>
+            <input type="text" id="Name" placeholder="Enter your name" required />
+        </div>
+
+        <button type="button" class="continue-btn" id="continueBtn">
+            <span class="button-text">Continue</span>
+            <div class="spinner"></div>
+        </button>
+
+        <div class="skip-link">
+            <a href="#" id="skipLink">Skip for now</a>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://moubjbxzopdqwoufpont.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function showMessage(el, text, type = 'error') {
+            el.textContent = text;
+            el.className = `message-box ${type} show`;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const fullNameInput = document.getElementById('fullName');
+            const continueBtn = document.getElementById('continueBtn');
+            const skipLink = document.getElementById('skipLink');
+            const statusMessage = document.getElementById('statusMessage');
+            const bgDiv = document.getElementById('bgImage');
+
+            // Load background image
+            const bgPath = 'JaiCarepic.jpg';
+            console.log('🔍 Loading background image from:', bgPath);
+
+            const img = new Image();
+            img.onload = () => {
+                bgDiv.style.backgroundImage = `url('${bgPath}')`;
+                console.log('✅ Background image loaded successfully!');
+            };
+            img.onerror = (err) => {
+                console.error('❌ Failed to load background image');
+                console.error('   Path:', bgPath);
+            };
+            img.src = bgPath;
+
+            // Check if user is logged in
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
+                    // Redirect to login if not authenticated
+                    window.location.replace('index.html');
+                    return;
+                }
+            } catch (err) {
+                console.error('Error checking session:', err);
+                window.location.replace('index.html');
+            }
+
+            continueBtn.addEventListener('click', async () => {
+                const fullName = fullNameInput.value.trim();
+
+                if (!fullName) {
+                    showMessage(statusMessage, 'Please enter your name', 'error');
+                    return;
+                }
+
+                if (fullName.length < 2) {
+                    showMessage(statusMessage, 'Name must be at least 2 characters', 'error');
+                    return;
+                }
+
+                continueBtn.disabled = true;
+                continueBtn.classList.add('loading');
+
+                try {
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    
+                    if (!user) {
+                        showMessage(statusMessage, 'User session not found', 'error');
+                        continueBtn.disabled = false;
+                        continueBtn.classList.remove('loading');
+                        return;
+                    }
+
+                    // Update user metadata with name
+                    const { data: updateData, error: updateError } = await supabaseClient.auth.updateUser({
+                        data: { 
+                            full_name: fullName,
+                            display_name: fullName
+                        }
+                    });
+
+                    if (updateError) {
+                        showMessage(statusMessage, 'Error saving name: ' + updateError.message, 'error');
+                        continueBtn.disabled = false;
+                        continueBtn.classList.remove('loading');
+                        return;
+                    }
+
+                    // Also try to save to a profiles table if it exists
+                    const { error: profileError } = await supabaseClient
+                        .from('profiles')
+                        .upsert(
+                            {
+                                id: user.id,
+                                full_name: fullName,
+                                updated_at: new Date()
+                            },
+                            { onConflict: 'id' }
+                        );
+
+                    if (profileError) {
+                        console.warn('Note: profiles table update failed (may not exist yet)', profileError);
+                    }
+
+                    showMessage(statusMessage, 'Name saved! Redirecting to Dashboard...', 'success');
+                    setTimeout(() => {
+                        document.body.classList.add('transition-out');
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 600);
+                    }, 800);
+
+                } catch (err) {
+                    console.error('Error:', err);
+                    showMessage(statusMessage, 'An error occurred. Please try again.', 'error');
+                    continueBtn.disabled = false;
+                    continueBtn.classList.remove('loading');
+                }
+            });
+
+            skipLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.body.classList.add('transition-out');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 600);
+            });
+
+            fullNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    continueBtn.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

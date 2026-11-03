@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Register - MyApp</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display:flex; 
+            justify-content:center; 
+            align-items:center; 
+            padding:20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* background image - fixed to viewport */
+        .bg-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        /* register container on top */
+        .register-container { 
+            position: relative;
+            z-index: 2;
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+            padding: 40px; 
+            width: 100%; 
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Fade out animation when transitioning */
+        body.transition-out {
+            animation: fadeOut 0.6s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        .register-container h1 { 
+            color: #333; 
+            text-align: center; 
+            margin-bottom: 10px; 
+            font-size: 28px; 
+        }
+
+        .register-container p { 
+            color: #666; 
+            text-align: center; 
+            margin-bottom: 30px; 
+            font-size: 14px; 
+        }
+
+        .form-group { 
+            margin-bottom: 20px; 
+        }
+
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            color: #333; 
+            font-weight: 500; 
+            font-size: 14px; 
+        }
+
+        .form-group input { 
+            width: 100%; 
+            padding: 12px 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            font-size: 14px; 
+            transition: border-color 0.3s; 
+        }
+
+        .form-group input:focus { 
+            outline: none; 
+            border-color: #667eea; 
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3); 
+        }
+
+        .form-group input::placeholder { 
+            color: #999; 
+        }
+
+        .password-requirements { 
+            font-size: 12px; 
+            color: #666; 
+            margin-top: 5px; 
+        }
+
+        .error-message { 
+            color: #dc3545; 
+            background: #f8d7da; 
+            padding: 12px 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+            border: 1px solid #f5c6cb; 
+            display: none; 
+            font-size: 14px; 
+            animation: slideDown 0.3s; 
+        }
+
+        .error-message.show { 
+            display: block; 
+        }
+
+        .success-message { 
+            color: #155724; 
+            background: #d4edda; 
+            padding: 12px 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+            border: 1px solid #c3e6cb; 
+            display: none; 
+            font-size: 14px; 
+            animation: slideDown 0.3s; 
+        }
+
+        .success-message.show { 
+            display: block; 
+        }
+
+        @keyframes slideDown { 
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            } 
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            } 
+        }
+
+        .register-btn { 
+            width: 100%; 
+            padding: 12px; 
+            background: linear-gradient(135deg, #667eea 0%, hsl(190, 100%, 75%) 100%); 
+            color: #fff; 
+            border: none; 
+            border-radius: 5px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .register-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .register-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .register-btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5); 
+        }
+
+        .register-btn:active {
+            transform: translateY(0);
+        }
+
+        .button-text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .register-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .register-btn.loading .button-text {
+            display: none;
+        }
+
+        .spinner {
+            display: none;
+            position: relative;
+            z-index: 1;
+            width: 20px;
+            height: 20px;
+        }
+
+        .register-btn.loading .spinner {
+            display: block;
+        }
+
+        .spinner::after {
+            content: '';
+            display: block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            border-color: white transparent white transparent;
+            animation: spin 1.2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .login-link { 
+            text-align: center; 
+            margin-top: 20px; 
+            font-size: 14px; 
+            color: #666; 
+        }
+
+        .login-link a { 
+            color: #667eea; 
+            text-decoration: none; 
+            font-weight: 600; 
+            transition: color 0.3s; 
+        }
+
+        .login-link a:hover { 
+            color: #764ba2; 
+            text-decoration: underline; 
+        }
+
+        .password-match-indicator { 
+            font-size: 12px; 
+            margin-top: 5px; 
+            color: #666; 
+        }
+
+        .password-match-indicator.match { 
+            color: #28a745; 
+        }
+
+        .password-match-indicator.mismatch { 
+            color: #dc3545; 
+        }
+
+        @media (max-width: 420px) {
+            .register-container { 
+                padding: 24px; 
+                margin: 12px; 
+            }
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Background Image -->
+    <div class="bg-image" id="bgImage" aria-hidden="true"></div>
+
+    <!-- Register Form Container -->
+    <div class="register-container">
+        <h1>Create an Account</h1>
+        <p>Write your mind, heal your heart.</p>
+
+        <form id="registerForm" novalidate>
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Create a password" required />
+                <div class="password-requirements">Password must be at least 6 characters long</div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required />
+                <div id="passwordMatchIndicator" class="password-match-indicator"></div>
+            </div>
+
+            <button type="submit" class="register-btn" id="registerBtn">
+                <span class="button-text">Register</span>
+                <div class="spinner"></div>
+            </button>
+        </form>
+
+        <div class="login-link">
+            Already have an account? <a href="index.html">Login here</a>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load background image
+        const bgPath = 'JaiCarepic.jpg';
+        const bgDiv = document.getElementById('bgImage');
+
+        console.log('🔍 Loading background image from:', bgPath);
+
+        const img = new Image();
+        img.onload = () => {
+            bgDiv.style.backgroundImage = `url('${bgPath}')`;
+            console.log('✅ Background image loaded successfully!');
+        };
+        img.onerror = (err) => {
+            console.error('❌ Failed to load background image');
+            console.error('   Path:', bgPath);
+            console.error('   Please make sure the file exists at:', bgPath);
+        };
+        img.src = bgPath;
+
+        // Supabase Configuration
+        const SUPABASE_URL = "https://moubjbxzopdqwoufpont.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Form Elements
+        const registerForm = document.getElementById('registerForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const registerBtn = document.getElementById('registerBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const passwordMatchIndicator = document.getElementById('passwordMatchIndicator');
+
+        // Update password match indicator
+        function updatePasswordMatch() {
+            const password = passwordInput.value;
+            const confirm = confirmPasswordInput.value;
+            
+            if (confirm.length === 0) {
+                passwordMatchIndicator.textContent = '';
+                passwordMatchIndicator.classList.remove('match', 'mismatch');
+                return;
+            }
+            
+            if (password === confirm) {
+                passwordMatchIndicator.textContent = '✓ Passwords match';
+                passwordMatchIndicator.classList.add('match');
+                passwordMatchIndicator.classList.remove('mismatch');
+            } else {
+                passwordMatchIndicator.textContent = '✗ Passwords do not match';
+                passwordMatchIndicator.classList.add('mismatch');
+                passwordMatchIndicator.classList.remove('match');
+            }
+        }
+
+        confirmPasswordInput.addEventListener('input', updatePasswordMatch);
+        passwordInput.addEventListener('input', updatePasswordMatch);
+
+        // Message handlers
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorMessage.classList.add('show');
+            successMessage.classList.remove('show');
+        }
+
+        function showSuccess(msg) {
+            successMessage.textContent = msg;
+            successMessage.classList.add('show');
+            errorMessage.classList.remove('show');
+        }
+
+        function clearMessages() {
+            errorMessage.classList.remove('show');
+            successMessage.classList.remove('show');
+            errorMessage.textContent = '';
+            successMessage.textContent = '';
+        }
+
+        // Form submission handler
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearMessages();
+
+            const email = emailInput.value.trim().toLowerCase();
+            const password = passwordInput.value;
+            const confirm = confirmPasswordInput.value;
+
+            // Validation
+            if (!email || !password || !confirm) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showError('Please enter a valid email address');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters long');
+                return;
+            }
+
+            if (password !== confirm) {
+                showError('Passwords do not match. Please try again.');
+                return;
+            }
+
+            registerBtn.disabled = true;
+            registerBtn.classList.add('loading');
+
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password
+                });
+
+                if (error) {
+                    showError('Registration failed: ' + (error.message || JSON.stringify(error)));
+                    registerBtn.disabled = false;
+                    registerBtn.classList.remove('loading');
+                    return;
+                }
+
+                if (data && data.session) {
+                    showSuccess('Registration successful! Redirecting to Dashboard...');
+                    setTimeout(() => {
+                        document.body.classList.add('transition-out');
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 600);
+                    }, 1000);
+                    return;
+                }
+
+                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (signInError) {
+                    showSuccess('Registration Successful! Please check your email to confirm your account before logging in. (Check spam folder too.)');
+                    registerBtn.disabled = false;
+                    registerBtn.classList.remove('loading');
+                } else {
+                    showSuccess('Registration and login successful! Redirecting to Dashboard...');
+                    setTimeout(() => {
+                        document.body.classList.add('transition-out');
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 600);
+                    }, 800);
+                }
+            } catch (err) {
+                console.error('Registration error:', err);
+                showError('An unexpected error occurred. Please try again.');
+                registerBtn.disabled = false;
+                registerBtn.classList.remove('loading');
+            }
+        });
+    });
+    </script>
+</body>
+</html>

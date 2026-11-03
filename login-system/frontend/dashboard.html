@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard - Mood Analysis Diary System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html,body { width:100%; height:100%; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, hsl(190, 100%, 75%) 100%);
+            min-height:100vh; display:flex; padding:20px; opacity:0; transition:opacity .3s;
+        }
+        body.authenticated { opacity:1; }
+        .dashboard-wrapper { display:flex; gap:30px; width:100%; max-width:1400px; margin:0 auto; animation:fadeIn .5s; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1; transform:translateY(0)} }
+        .sidebar { display:flex; flex-direction:column; gap:15px; width:220px; flex-shrink:0; height:fit-content; }
+        .nav-box { background:white; border-radius:10px; padding:0; box-shadow:0 4px 15px rgba(0,0,0,.15); overflow:hidden; min-height:60px; display:flex; align-items:center; justify-content:center; }
+        .nav-box a, .nav-box button { display:flex; align-items:center; justify-content:center; width:100%; height:100%; padding:18px 20px; text-decoration:none; color:#333; font-weight:600; font-size:14px; border:none; background:white; cursor:pointer; transition:all .3s; }
+        .nav-box a:hover, .nav-box button:hover { background:#667eea; color:white; transform:translateX(5px); box-shadow:0 6px 20px rgba(102,126,234,.3); }
+        .nav-box a:active, .nav-box button:active { transform: translateX(0); }
+        .nav-box.active a { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; box-shadow:0 6px 20px rgba(102,126,234,.3); }
+        .nav-box.logout button { background:#dc3545; color:white; }
+        .nav-box.logout button:hover { background:#c82333; transform:translateX(5px); box-shadow:0 6px 20px rgba(220,53,69,.3); }
+
+
+        .nav-box a::before {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            background-size: 24px;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+        }
+
+        .nav-box:nth-child(1) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>');
+        }
+
+        .nav-box:nth-child(2) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>');
+        }
+
+        /* เปลี่ยนไอคอนที่นี่เป็น radar chart icon */
+        .nav-box:nth-child(3) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/><path d="M12 5 L15.5 9"/><path d="M12 5 L8.5 9"/><path d="M12 12 L19 12"/></g><circle cx="16.5" cy="8.5" r="1.2" fill="currentColor"/></svg>');
+        }
+        .nav-box:nth-child(4) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H6v-2h14v2zm0-3H6V9h14v2zm0-3H6V6h14v2z"/></svg>');
+        }
+
+        .nav-box.logout button::before {
+            content: '🚪';
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        .center-content { flex:1; display:flex; justify-content:center; align-items:center; min-height:500px; }
+        .diary-link { text-decoration:none; width:100%; max-width:700px; display:block; }
+        .diary-box { background:white; border:3px solid #667eea; border-radius:15px; padding:60px 40px; box-shadow:0 10px 40px rgba(0,0,0,.2); transition:all .4s cubic-bezier(.34,1.56,.64,1); text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-height:400px; }
+        .diary-box:hover { transform:translateY(-15px) scale(1.02); box-shadow:0 20px 60px rgba(102,126,234,.35); border-color:#764ba2; }
+        .diary-icon { font-size:80px; margin-bottom:20px; animation: float 3s ease-in-out infinite; display:block; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+
+        .diary-title {
+            color: #333;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 15px;
+
+
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+            background-clip: text;
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+
+     
+            color: #333;
+        }
+
+        .diary-cta { display:inline-block; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; padding:14px 35px; border-radius:8px; font-weight:600; font-size:15px; transition:all .3s; box-shadow:0 4px 15px rgba(102,126,234,.2); }
+        .loading-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); display:flex; justify-content:center; align-items:center; z-index:9999; flex-direction:column; }
+        .spinner { border:5px solid rgba(255,255,255,.3); border-top:5px solid white; border-radius:50%; width:50px; height:50px; animation:spin 1s linear infinite; margin-bottom:20px; }
+        @keyframes spin { to{ transform:rotate(360deg); } }
+        .loading-text { color:white; font-size:18px; font-weight:600; }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Dashboard...</div>
+    </div>
+
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="nav-box active"><a href="dashboard.html" title="Go to Main Page">Main Page</a></div>
+            <div class="nav-box"><a href="profile.html" title="Go to User Profile">User Profile</a></div>
+            <div class="nav-box"><a href="Radar Chart.html" title="Go to Radar Chart">Radar Chart</a></div>
+            <div class="nav-box"><a href="feedback.html" title="Go to Feedback">Feedback</a></div>
+            <div class="nav-box logout"><button id="logoutBtn" type="button" title="Click to Logout">Logout</button></div>
+        </aside>
+
+        <main class="center-content">
+            <a href="diary.html" class="diary-link" title="Click to open your Mood Analysis Diary">
+                <div class="diary-box">
+                    <span class="diary-icon">📔</span>
+                    <h1 class="diary-title">Mood Analysis Diary</h1>
+                    <span class="diary-cta">Start Recording →</span>
+                </div>
+            </a>
+        </main>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://moubjbxzopdqwoufpont.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+        let authSubscription = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const body = document.body;
+
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+
+                if (!session) {
+                    window.location.replace('index.html');
+                    return;
+                }
+
+                if (loadingScreen) loadingScreen.style.display = 'none';
+                body.classList.add('authenticated');
+                initializeDashboard();
+
+  
+                const { data } = supabaseClient.auth.onAuthStateChange((event, session) => {
+                    if (!session) {
+                        window.location.replace('index.html');
+                    }
+                });
+                authSubscription = data?.subscription ?? null;
+
+            } catch (err) {
+                console.error('Error checking session:', err);
+                window.location.replace('index.html');
+            }
+        });
+
+   
+        window.addEventListener('beforeunload', () => {
+            try {
+                if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
+                    authSubscription.unsubscribe();
+                }
+            } catch (e) {
+               
+            }
+        });
+
+        function initializeDashboard() {
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', handleLogout);
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await supabaseClient.auth.signOut();
+            } catch (err) {
+                console.error('Logout error:', err);
+            } finally {
+      
+                alert('You have been logged out successfully');
+                window.location.replace('index.html');
+            }
+        }
+    </script>
+</body>
+</html>

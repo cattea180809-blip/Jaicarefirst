@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Mood Analysis Diary - Radar Chart</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        html,body{width:100%;height:100%}
+        body{
+            font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size:15px;
+            background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            min-height:100vh;display:flex;padding:20px;opacity:0;transition:opacity .3s;
+        }
+        body.authenticated{opacity:1}
+        .dashboard-wrapper{display:flex;gap:30px;width:100%;max-width:1400px;margin:0 auto;animation:fadeIn .5s}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .sidebar{display:flex;flex-direction:column;gap:15px;width:220px;flex-shrink:0;height:fit-content}
+        .nav-box{background:white;border-radius:10px;padding:0;box-shadow:0 4px 15px rgba(0,0,0,.15);overflow:hidden;min-height:60px;display:flex;align-items:center;justify-content:center}
+        .nav-box a,.nav-box button{display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:18px 20px;text-decoration:none;color:#333;font-weight:600;font-size:14px;border:none;background:white;cursor:pointer;transition:all .3s}
+        .nav-box a:hover,.nav-box button:hover{background:#667eea;color:white;transform:translateX(5px);box-shadow:0 6px 20px rgba(102,126,234,.3)}
+        .nav-box a:active,.nav-box button:active{transform:translateX(0)}
+        .nav-box.active a{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;box-shadow:0 6px 20px rgba(102,126,234,.3)}
+        .nav-box.logout button{background:#dc3545;color:white}
+        .nav-box.logout button:hover{background:#c82333;transform:translateX(5px);box-shadow:0 6px 20px rgba(220,53,69,.3)}
+
+        .nav-box a::before {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            background-size: 24px;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+        }
+
+        .nav-box:nth-child(1) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>');
+        }
+
+        .nav-box:nth-child(2) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>');
+        }
+        .nav-box:nth-child(3) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 4h-1V2H9v2H8C6.9 4 6 4.9 6 6v2h12V6c0-1.1-.9-2-2-2zm2 6H6v10c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V10zm-3 7H9v-2h6v2z"/></svg>');
+        }
+
+        .nav-box:nth-child(4) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H6v-2h14v2zm0-3H6V9h14v2zm0-3H6V6h14v2z"/></svg>');
+        }
+
+        .nav-box.logout button::before {
+            content: '🚪';
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        .center-content{flex:1;display:flex;flex-direction:column;gap:20px;background:white;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.2);padding:40px;overflow-y:auto}
+        
+        .header-section{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .header-section h1{color:#333;font-size:28px}
+        .filter-buttons{display:flex;gap:12px;flex-wrap:wrap}
+        .filter-btn{padding:10px 20px;border:2px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;transition:all .3s;color:#333}
+        .filter-btn.active{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border-color:#667eea;box-shadow:0 6px 20px rgba(102,126,234,.3)}
+        .filter-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+
+        .date-range-container{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+        .date-input-group{display:flex;gap:8px;align-items:center}
+        .date-input-group label{font-weight:600;color:#333;font-size:14px}
+        .date-input-group input{padding:8px 12px;border:2px solid #e0e0e0;border-radius:6px;font-size:14px}
+        .apply-filter-btn{padding:10px 24px;background:#4CAF50;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;transition:all .3s}
+        .apply-filter-btn:hover{background:#45a049;box-shadow:0 4px 12px rgba(76,175,80,.25)}
+
+        .chart-container{background:#f8f9fa;border-radius:12px;padding:30px;border:1px solid #e9ecef;display:flex;flex-direction:column;align-items:center;min-height:500px}
+        .chart-canvas-wrapper{width:100%;max-width:600px;height:500px;position:relative}
+        
+        .no-data-message{text-align:center;color:#999;font-size:16px;padding:40px}
+
+        .percent-blocks {
+          width:100%;
+          margin-top:30px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap:15px;
+          padding:20px;
+          background:#fff;
+          border-radius:12px;
+          border:1px solid #e9ecef;
+        }
+
+        .percent-row { display: contents; }
+
+        .percent-block {
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          padding:16px 20px;
+          border-radius:12px;
+          color:#fff;
+          font-weight:600;
+          box-shadow:0 6px 20px rgba(0,0,0,.06);
+          min-height:60px;
+          width:100%;
+          box-sizing:border-box;
+          transition:transform .12s ease, box-shadow .12s ease;
+        }
+        .percent-block:hover {
+          transform:translateY(-3px);
+          box-shadow:0 10px 30px rgba(0,0,0,.08);
+        }
+        .percent-left { display:flex; align-items:center; gap:12px; min-width:0; }
+        .percent-color { width:16px; height:16px; border-radius:4px; flex-shrink:0; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.06); }
+        .percent-label { flex:1; font-size:15px; color:rgba(255,255,255,0.95); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .percent-value { width:70px; text-align:right; font-size:16px; font-weight:800; }
+
+        .stats-section{margin-top:30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;width:100%}
+        .stat-card{background:#f8f9fa;padding:20px;border-radius:12px;text-align:center;border:1px solid #e9ecef}
+        .stat-card h3{color:#667eea;font-size:28px;margin-bottom:8px}
+        .stat-card p{color:#999;font-size:14px;font-weight:500}
+
+        .loading-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;justify-content:center;align-items:center;z-index:9999;flex-direction:column}
+        .spinner{border:5px solid rgba(255,255,255,.3);border-top:5px solid #fff;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin-bottom:20px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .hidden{display:none!important}
+
+        @media (max-width:768px) {
+            .percent-blocks { grid-template-columns: 1fr; }
+            .header-section{flex-direction:column;align-items:flex-start;gap:15px}
+            .filter-buttons{width:100%}
+            .date-range-container{width:100%}
+            .stats-section{grid-template-columns:1fr}
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Radar Chart...</div>
+    </div>
+
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="nav-box"><a href="dashboard.html">Main Page</a></div>
+            <div class="nav-box"><a href="profile.html">User Profile</a></div>
+            <div class="nav-box active"><a href="Radar Chart.html">Radar Chart</a></div>
+            <div class="nav-box"><a href="feedback.html">Feedback</a></div>
+            <div class="nav-box logout"><button id="logoutBtn" type="button">Logout</button></div>
+        </aside>
+
+        <main class="center-content">
+            <div class="header-section">
+                <h1>📊 Aggregated Mood Analysis Chart</h1>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="daily">Daily</button>
+                    <button class="filter-btn" data-filter="weekly">Weekly</button>
+                    <button class="filter-btn" data-filter="monthly">Monthly</button>
+                </div>
+            </div>
+
+            <div class="date-range-container" id="dateRangeContainer">
+                <div class="date-input-group">
+                    <label for="startDate">From:</label>
+                    <input type="date" id="startDate" />
+                </div>
+                <div class="date-input-group">
+                    <label for="endDate">To:</label>
+                    <input type="date" id="endDate" />
+                </div>
+                <button class="apply-filter-btn" id="applyFilterBtn">Apply Filter</button>
+            </div>
+
+            <div class="chart-container">
+                <div id="noDataMessage" class="no-data-message hidden">
+                    No diary entries found for the selected period
+                </div>
+                <div class="chart-canvas-wrapper" id="chartWrapper" style="display:none;">
+                    <canvas id="aggregatedRadarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Percentage Blocks -->
+            <div id="percentBlocks" class="percent-blocks hidden"></div>
+
+            <!-- Stats Section -->
+            <div class="stats-section" id="statsSection" style="display:none;">
+                <div class="stat-card">
+                    <h3 id="entryCount">0</h3>
+                    <p>Entries Analyzed</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="topEmotion">-</h3>
+                    <p>Dominant Emotion</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="avgComplexity">-</h3>
+                    <p>Avg Complexity</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://moubjbxzopdqwoufpont.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let radarChartInstance = null;
+        let currentFilter = 'daily';
+
+        const FORCED_LABEL_ORDER = ['joy','trust','fear','surprise','sadness','disgust','anger','anticipation'];
+
+        async function checkAuthentication() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
+                    window.location.replace('index.html');
+                    return false;
+                }
+                return true;
+            } catch (err) {
+                console.error('Error getting session:', err);
+                window.location.replace('index.html');
+                return false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const body = document.body;
+
+            const ok = await checkAuthentication();
+            if (!ok) {
+                document.body.innerHTML = '';
+                return;
+            }
+
+            setTimeout(() => {
+                if (loadingScreen) loadingScreen.style.display = 'none';
+                body.classList.add('authenticated');
+                initializeRadarChart();
+            }, 300);
+
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (!session) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('index.html');
+                }
+            });
+        });
+
+        function initializeRadarChart() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const applyFilterBtn = document.getElementById('applyFilterBtn');
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+
+            // Set default dates
+            const today = new Date();
+            const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            endDateInput.value = today.toISOString().split('T')[0];
+            startDateInput.value = sevenDaysAgo.toISOString().split('T')[0];
+
+            // Filter button handlers
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    filterBtns.forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentFilter = e.target.dataset.filter;
+                    updateDateRange();
+                });
+            });
+
+            // Apply filter handler
+            applyFilterBtn.addEventListener('click', () => {
+                loadAggregatedData();
+            });
+
+            // Logout handler
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    try {
+                        await supabaseClient.auth.signOut();
+                    } catch (err) {
+                        console.error('Logout error:', err);
+                    } finally {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        window.location.replace('index.html');
+                    }
+                });
+            }
+
+            // Load initial data
+            loadAggregatedData();
+        }
+
+        function updateDateRange() {
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            const today = new Date();
+
+            switch(currentFilter) {
+                case 'daily': {
+                    // Single day (today)
+                    const todayStr = today.toISOString().split('T')[0];
+                    startDateInput.value = todayStr;
+                    endDateInput.value = todayStr;
+                    break;
+                }
+                case 'weekly': {
+                    // Last 7 days
+                    const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+                    startDateInput.value = sevenDaysAgo.toISOString().split('T')[0];
+                    endDateInput.value = today.toISOString().split('T')[0];
+                    break;
+                }
+                case 'monthly': {
+                    // Last 30 days
+                    const thirtyDaysAgo = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
+                    startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
+                    endDateInput.value = today.toISOString().split('T')[0];
+                    break;
+                }
+            }
+
+            loadAggregatedData();
+        }
+
+        async function loadAggregatedData() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
+                    window.location.replace('index.html');
+                    return;
+                }
+                const userId = session.user.id;
+
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+
+                // Fetch all entries within date range
+                const { data, error } = await supabaseClient
+                    .from('diary_entries')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .gte('entry_date', startDate)
+                    .lte('entry_date', endDate)
+                    .order('entry_date', { ascending: true });
+
+                if (error) throw error;
+
+                const entries = data || [];
+
+                if (entries.length === 0) {
+                    displayNoData();
+                    return;
+                }
+
+                // Aggregate emotions data
+                const aggregatedEmotions = aggregateEmotions(entries);
+                
+                // Render chart
+                renderAggregatedChart(aggregatedEmotions);
+                
+                // Render percentage blocks
+                renderPercentageBlocks(aggregatedEmotions);
+
+                // Update stats
+                updateStats(entries, aggregatedEmotions);
+
+            } catch (err) {
+                console.error('Error loading aggregated data:', err);
+                displayNoData();
+            }
+        }
+
+        function aggregateEmotions(entries) {
+            const aggregated = {};
+            FORCED_LABEL_ORDER.forEach(emotion => {
+                aggregated[emotion] = 0;
+            });
+
+            let validEntryCount = 0;
+
+            entries.forEach(entry => {
+                if (!entry.primary_emotions) return;
+
+                const emotions = parsePrimaryEmotions(entry.primary_emotions);
+                if (!emotions) return;
+
+                validEntryCount++;
+
+                FORCED_LABEL_ORDER.forEach(emotion => {
+                    const value = emotions[emotion] || 0;
+                    aggregated[emotion] += Number(value) || 0;
+                });
+            });
+
+            // Average the values
+            if (validEntryCount > 0) {
+                FORCED_LABEL_ORDER.forEach(emotion => {
+                    aggregated[emotion] = aggregated[emotion] / validEntryCount;
+                });
+            }
+
+            return aggregated;
+        }
+
+        function parsePrimaryEmotions(raw) {
+            if (!raw) return null;
+            if (typeof raw === 'string') {
+                try {
+                    return JSON.parse(raw);
+                } catch (e) {
+                    console.warn('primary_emotions: failed to parse string JSON', e);
+                    return null;
+                }
+            }
+            if (typeof raw === 'object') {
+                return raw;
+            }
+            return null;
+        }
+
+        function renderAggregatedChart(emotionsData) {
+            const chartWrapper = document.getElementById('chartWrapper');
+            const noDataMessage = document.getElementById('noDataMessage');
+            const statsSection = document.getElementById('statsSection');
+
+            if (!emotionsData || Object.keys(emotionsData).length === 0) {
+                chartWrapper.style.display = 'none';
+                noDataMessage.classList.remove('hidden');
+                statsSection.style.display = 'none';
+                return;
+            }
+
+            chartWrapper.style.display = 'block';
+            noDataMessage.classList.add('hidden');
+            statsSection.style.display = 'grid';
+
+            const ctx = document.getElementById('aggregatedRadarChart').getContext('2d');
+            if (radarChartInstance) radarChartInstance.destroy();
+
+            const labels = FORCED_LABEL_ORDER.slice();
+            const dataValues = labels.map(k => {
+                const v = emotionsData[k];
+                return (typeof v !== 'undefined' && v !== null) ? Number(v) : 0;
+            });
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                    datasets: [{
+                        label: 'Aggregated Emotions',
+                        data: dataValues,
+                        backgroundColor: 'rgba(102,126,234,0.25)',
+                        borderColor: '#667eea',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#764ba2',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#764ba2',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0,0,0,0.1)' },
+                            grid: { color: 'rgba(0,0,0,0.08)' },
+                            pointLabels: { font: { size:12, family:"'Segoe UI', sans-serif", weight:'600' }, color:'#444' },
+                            ticks: { display: false },
+                            suggestedMin: 0,
+                            suggestedMax: 1
+                        }
+                    },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Score: ' + context.parsed.r.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayNoData() {
+            const chartWrapper = document.getElementById('chartWrapper');
+            const noDataMessage = document.getElementById('noDataMessage');
+            const percentBlocks = document.getElementById('percentBlocks');
+            const statsSection = document.getElementById('statsSection');
+
+            chartWrapper.style.display = 'none';
+            noDataMessage.classList.remove('hidden');
+            percentBlocks.classList.add('hidden');
+            statsSection.style.display = 'none';
+        }
+
+        function computePercentages(emotionsObj) {
+            if (!emotionsObj || typeof emotionsObj !== 'object') return null;
+            const entries = Object.entries(emotionsObj);
+            const sum = entries.reduce((s, [, v]) => s + (Number(v) || 0), 0);
+            const percentObj = {};
+            
+            if (sum === 0) {
+                entries.forEach(([k]) => { percentObj[k] = 0; });
+                return percentObj;
+            }
+            
+            entries.forEach(([k, v]) => {
+                const n = Number(v) || 0;
+                percentObj[k] = Math.round((n / sum) * 100);
+            });
+
+            const total = Object.values(percentObj).reduce((s, val) => s + val, 0);
+            if (total !== 100) {
+                const diff = 100 - total;
+                let maxKey = null;
+                let maxVal = -Infinity;
+                for (const [k, v] of Object.entries(percentObj)) {
+                    if (v > maxVal) { maxVal = v; maxKey = k; }
+                }
+                if (maxKey) percentObj[maxKey] = percentObj[maxKey] + diff;
+            }
+
+            return percentObj;
+        }
+
+        function renderPercentageBlocks(emotionsData) {
+            const percentBlocks = document.getElementById('percentBlocks');
+
+            if (!emotionsData || Object.keys(emotionsData).length === 0) {
+                percentBlocks.classList.add('hidden');
+                percentBlocks.innerHTML = '';
+                return;
+            }
+
+            const percentObj = computePercentages(emotionsData);
+
+            const colorMap = {
+                'joy': '#FFD166',
+                'trust': '#7BE495',
+                'anticipation': '#7EB6FF',
+                'surprise': '#4CC9F0',
+                'fear': '#9D4EDD',
+                'anger': '#EF476F',
+                'sadness': '#118AB2',
+                'disgust': '#F98500',
+                'default': '#667eea'
+            };
+
+            const pairs = [
+                ['joy', 'fear'],
+                ['trust', 'anger'],
+                ['anticipation', 'sadness'],
+                ['surprise', 'disgust']
+            ];
+
+            let html = '';
+            pairs.forEach(([leftKey, rightKey]) => {
+                const leftVal = percentObj[leftKey] !== undefined ? percentObj[leftKey] : 0;
+                const rightVal = percentObj[rightKey] !== undefined ? percentObj[rightKey] : 0;
+
+                const leftColor = colorMap[leftKey.toLowerCase()] || colorMap['default'];
+                const rightColor = colorMap[rightKey.toLowerCase()] || colorMap['default'];
+
+                const leftLabel = leftKey.charAt(0).toUpperCase() + leftKey.slice(1);
+                const rightLabel = rightKey.charAt(0).toUpperCase() + rightKey.slice(1);
+
+                html += `
+                  <div class="percent-row">
+                    <div class="percent-block" style="background:${hexToRgba(leftColor,0.88)}">
+                      <div class="percent-left">
+                        <div class="percent-color" style="background:${leftColor}"></div>
+                        <div class="percent-label">${leftLabel}</div>
+                      </div>
+                      <div class="percent-value">${leftVal}%</div>
+                    </div>
+
+                    <div class="percent-block" style="background:${hexToRgba(rightColor,0.88)}">
+                      <div class="percent-left">
+                        <div class="percent-color" style="background:${rightColor}"></div>
+                        <div class="percent-label">${rightLabel}</div>
+                      </div>
+                      <div class="percent-value">${rightVal}%</div>
+                    </div>
+                  </div>
+                `;
+            });
+
+            percentBlocks.innerHTML = html;
+            percentBlocks.classList.remove('hidden');
+        }
+
+        function hexToRgba(hex, alpha=1) {
+            try {
+                let h = hex.replace('#','');
+                if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+                const r = parseInt(h.substring(0,2),16);
+                const g = parseInt(h.substring(2,4),16);
+                const b = parseInt(h.substring(4,6),16);
+                return `rgba(${r},${g},${b},${alpha})`;
+            } catch (e) {
+                return `rgba(102,126,234,${alpha})`;
+            }
+        }
+
+        function updateStats(entries, aggregatedEmotions) {
+            const entryCount = entries.filter(e => e.content && e.content.trim().length > 0).length;
+            document.getElementById('entryCount').innerText = entryCount;
+
+            // Find dominant emotion
+            let dominantEmotion = '-';
+            let maxValue = -1;
+            for (const [emotion, value] of Object.entries(aggregatedEmotions)) {
+                if (value > maxValue) {
+                    maxValue = value;
+                    dominantEmotion = emotion.charAt(0).toUpperCase() + emotion.slice(1);
+                }
+            }
+            document.getElementById('topEmotion').innerText = dominantEmotion;
+
+            // Count dyads (as a proxy for complexity)
+            const dyadsCount = entries.filter(e => e.detected_dyad && e.detected_dyad !== "None").length;
+            const complexity = entryCount > 0 ? ((dyadsCount / entryCount) * 100).toFixed(0) : '0';
+            document.getElementById('avgComplexity').innerText = complexity + '%';
+        }
+    </script>
+</body>
+</html>
