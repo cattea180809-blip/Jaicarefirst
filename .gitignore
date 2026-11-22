@@ -1,2 +1,3 @@
 login-system/frontend/my_wangchan_model/
 *.safetensors
+.env

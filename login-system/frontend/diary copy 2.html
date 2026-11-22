@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Mood Analysis Diary - Write Entry</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('./JaiCarepic.jpg') center / cover no-repeat fixed;
+            min-height: 100vh;
+            display: flex;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        body.authenticated { opacity: 1; }
+
+        .dashboard-wrapper {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            animation: fadeIn .5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 220px;
+            flex-shrink: 0;
+            height: fit-content;
+        }
+
+        .nav-box {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.15);
+            overflow: hidden;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-box a, .nav-box button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 18px 20px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            background: white;
+            cursor: pointer;
+            transition: all .3s;
+        }
+
+        .nav-box a:hover, .nav-box button:hover {
+            background: #667eea;
+            color: white;
+            transform: translateX(5px);
+            box-shadow: 0 6px 20px rgba(102,126,234,.3);
+        }
+
+        .nav-box.active a {
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            color: white;
+        }
+
+        .nav-box.logout button { background: #dc3545; color: white; }
+        .nav-box.logout button:hover { background: #c82333; }
+
+        .nav-box a::before {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            background-size: 24px;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+        }
+
+        .nav-box:nth-child(1) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>');
+        }
+
+        .nav-box:nth-child(2) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>');
+        }
+
+        .nav-box:nth-child(3) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 4h-1V2H9v2H8C6.9 4 6 4.9 6 6v2h12V6c0-1.1-.9-2-2-2zm2 6H6v10c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V10zm-3 7H9v-2h6v2z"/></svg>');
+        }
+
+        .nav-box:nth-child(4) a::before {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H6v-2h14v2zm0-3H6V9h14v2zm0-3H6V6h14v2z"/></svg>');
+        }
+
+        .nav-box.logout button::before {
+            content: '🚪';
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        .center-content {
+            flex: 1;
+            display: flex;
+            min-height: 600px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,.2);
+            overflow: hidden;
+        }
+
+        .diary-left-section {
+            flex: 0 0 35%;
+            background: #fff;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+        }
+
+        .guidance-text {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 20px;
+            text-align: left;
+            width: 100%;
+        }
+
+        .save-button {
+            align-self: flex-start;
+            padding: 12px 32px;
+            background: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 25px;
+        }
+
+        .chart-box {
+            width: 100%;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .diary-right-section {
+            flex: 1;
+            background: #fafafa;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .diary-textarea {
+            flex: 1;
+            min-height: 250px;
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.8;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            resize: none;
+            background: #fff;
+            color: #333;
+        }
+
+        .date-input-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .left-controls, .right-controls, .nav-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .edit-button {
+            padding: 10px 22px;
+            font-size: 14px;
+            font-weight: 600;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .newpage-button, .nav-page-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .newpage-button { padding: 10px 14px; }
+        .nav-page-btn.small { padding: 6px 8px; font-size: 14px; }
+
+        .date-input {
+            padding: 10px 16px;
+            font-size: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            background: #fff;
+            color: #666;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show { display: flex; }
+
+        .modal-content {
+            background: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            color: white;
+        }
+
+        .spinner {
+            border: 5px solid rgba(255,255,255,.3);
+            border-top: 5px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+
+        .ai-language-switch {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .ai-language-switch button {
+            padding: 5px 12px;
+            border: 1px solid #ccc;
+            border-radius: 14px;
+            background: #fff;
+            color: #555;
+            cursor: pointer;
+        }
+
+        .ai-language-switch button.active {
+            background: #764ba2;
+            border-color: #764ba2;
+            color: #fff;
+        }
+
+        .percent-blocks {
+            width: 100%;
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding-bottom: 6px;
+        }
+
+        .percent-row { display: contents; }
+
+        .percent-block {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0,0,0,.06);
+            min-height: 56px;
+            width: 100%;
+        }
+
+        .percent-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .percent-color { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+        .percent-label {
+            flex: 1;
+            font-size: 15px;
+            color: rgba(255,255,255,.95);
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .percent-value { width: 64px; text-align: right; font-size: 15px; font-weight: 800; }
+
+        @media (max-width: 900px) {
+            .dashboard-wrapper { flex-direction: column; }
+            .sidebar { flex-direction: row; width: 100%; flex-wrap: wrap; }
+            .nav-box { flex: 1; }
+            .center-content { flex-direction: column; }
+            .diary-left-section { flex-basis: auto; border-right: 0; border-bottom: 1px solid #e0e0e0; }
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 10px; }
+            .diary-right-section { padding: 20px; }
+            .percent-blocks { grid-template-columns: 1fr; }
+            .percent-value { width: 48px; }
+            .percent-block { min-height: 48px; padding: 10px 14px; }
+            .date-input-container { flex-wrap: wrap; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Diary...</div>
+    </div>
+
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="nav-box"><a href="dashboard.html">Main Page</a></div>
+            <div class="nav-box"><a href="profile.html">User Profile</a></div>
+            <div class="nav-box"><a href="Radar Chart.html">Radar Chart</a></div>
+            <div class="nav-box"><a href="feedback.html">Feedback</a></div>
+            <div class="nav-box logout"><button id="logoutBtn" type="button">Logout</button></div>
+        </aside>
+
+        <main class="center-content">
+            <div class="diary-left-section">
+                <p class="guidance-text">เมื่อคุณสิ้นสุดการเขียนแล้ว สามารถกดปุ่มนี้เพื่อบันทึกได้เลย</p>
+                <button class="save-button hidden" id="saveButton">บันทึก</button>
+
+                <div id="chartContainer" class="chart-box hidden">
+                    <span class="chart-title">📊 สัดส่วนอารมณ์ 8 ด้าน</span>
+                    <canvas id="emotionRadarChart"></canvas>
+                    <div id="percentBlocks" class="percent-blocks hidden" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <div class="diary-right-section">
+                <div class="diary-input-wrapper" style="display:flex;flex-direction:column;height:100%;gap:20px">
+                    <div id="chatContainer" class="hidden" style="display:flex;flex-direction:column;gap:15px;margin-bottom:10px;font-family:'Sarabun',sans-serif">
+                        <div style="align-self:flex-end;background:#667eea;color:#fff;padding:12px 16px;border-radius:15px 15px 0 15px;max-width:80%">
+                            <p id="userChatText"></p>
+                        </div>
+                        <div style="align-self:flex-start;background:#e8e8e8;color:#333;padding:12px 16px;border-radius:15px 15px 15px 0;max-width:80%">
+                            <strong style="color:#764ba2;display:block;margin-bottom:5px">
+                                🔮 ใจแคร์ บอท (อารมณ์: <span id="emotionText">-</span>)
+                            </strong>
+                            <div class="ai-language-switch" aria-label="เลือกภาษาคำตอบ">
+                                <button type="button" class="active" data-language="th" aria-pressed="true">ไทย</button>
+                                <button type="button" data-language="en" aria-pressed="false">English</button>
+                            </div>
+                            <p id="aiChatResponse">กำลังประมวลผลคำตอบ...</p>
+                        </div>
+                    </div>
+
+                    <textarea id="diaryTextarea" class="diary-textarea" placeholder="เริ่มพิมพ์ตรงนี้ได้เลย"></textarea>
+
+                    <div class="date-input-container">
+                        <div class="left-controls" style="flex:1;">
+                            <div class="nav-buttons">
+                                <button type="button" class="nav-page-btn small hidden" id="prevBtn" aria-label="Previous page" title="ก่อนหน้า">◀</button>
+                                <span id="pageIndicator" style="font-weight:600;color:#333;display:none;margin:0 8px;">Page 1 / 1</span>
+                                <button type="button" class="nav-page-btn small hidden" id="nextBtn" aria-label="Next page" title="ถัดไป">▶</button>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:8px;align-items:center;width:50%;justify-content:center;">
+                            <div class="left-controls">
+                                <button type="button" class="edit-button hidden" id="editButton">แก้ไข</button>
+                                <button type="button" class="newpage-button" id="newPageButton">เพิ่มหน้า</button>
+                            </div>
+                            <input type="date" class="date-input" id="dateInput"/>
+                        </div>
+
+                        <div class="right-controls" style="justify-content:flex-end;flex:1;">
+                            <button type="button" class="nav-page-btn hidden" id="deleteButton" style="background:#fff;border-color:#e0a0a0;color:#c82333;">ลบ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal" id="confirmationModal">
+        <div class="modal-content">
+            <p class="modal-warning-text">ยืนยันการบันทึกไดอารี่ประจำวันนี้?</p>
+            <div class="modal-buttons" style="display:flex;gap:12px;justify-content:center">
+                <button class="modal-button confirm" id="confirmOkButton" style="padding:12px 28px;background:#4CAF50;color:#fff;border-radius:6px;border:none">ตกลง</button>
+                <button class="modal-button cancel" id="confirmCancelButton" style="padding:12px 28px;background:#f0f0f0;color:#666;border-radius:6px;border:2px solid #e0e0e0">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://moubjbxzopdqwoufpont.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+        let radarChartInstance = null;
+        let entries = [];
+        let currentIndex = -1;
+        let isEditing = false;
+        let responseLanguage = 'th';
+
+        const FORCED_LABEL_ORDER = [
+            'joy', 'trust', 'fear', 'surprise',
+            'sadness', 'disgust', 'anger', 'anticipation'
+        ];
+
+        async function checkAuthentication() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
+                    window.location.replace('index.html');
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error('Error getting session:', error);
+                window.location.replace('index.html');
+                return false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const authenticated = await checkAuthentication();
+
+            if (!authenticated) {
+                document.body.innerHTML = '';
+                return;
+            }
+
+            setTimeout(() => {
+                if (loadingScreen) loadingScreen.style.display = 'none';
+                document.body.classList.add('authenticated');
+                initializeDiary();
+            }, 300);
+
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (!session) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('index.html');
+                }
+            });
+        });
+
+        function parsePrimaryEmotions(raw) {
+            if (!raw) return null;
+
+            if (typeof raw === 'string') {
+                try {
+                    return JSON.parse(raw);
+                } catch (error) {
+                    console.warn('Could not parse primary_emotions:', error);
+                    return null;
+                }
+            }
+
+            return typeof raw === 'object' ? raw : null;
+        }
+
+        function computePercentages(emotionsObject) {
+            if (!emotionsObject || typeof emotionsObject !== 'object') return null;
+
+            const values = Object.entries(emotionsObject);
+            const sum = values.reduce((total, [, value]) => total + (Number(value) || 0), 0);
+            const percentages = {};
+
+            if (sum === 0) {
+                values.forEach(([key]) => { percentages[key] = 0; });
+                return percentages;
+            }
+
+            values.forEach(([key, value]) => {
+                percentages[key] = Math.round(((Number(value) || 0) / sum) * 100);
+            });
+
+            const total = Object.values(percentages).reduce((a, b) => a + b, 0);
+            if (total !== 100) {
+                const largestKey = Object.keys(percentages).reduce(
+                    (maxKey, key) => percentages[key] > (percentages[maxKey] ?? -Infinity) ? key : maxKey,
+                    null
+                );
+                if (largestKey) percentages[largestKey] += 100 - total;
+            }
+
+            return percentages;
+        }
+
+        function hexToRgba(hex, alpha = 1) {
+            try {
+                let value = hex.replace('#', '');
+                if (value.length === 3) value = value.split('').map(char => char + char).join('');
+                const red = parseInt(value.substring(0, 2), 16);
+                const green = parseInt(value.substring(2, 4), 16);
+                const blue = parseInt(value.substring(4, 6), 16);
+                return `rgba(${red},${green},${blue},${alpha})`;
+            } catch (error) {
+                return `rgba(102,126,234,${alpha})`;
+            }
+        }
+
+        function renderPercentageBlocks(emotionsData) {
+            const blocks = document.getElementById('percentBlocks');
+            if (!blocks) return;
+
+            if (!emotionsData || Object.keys(emotionsData).length === 0) {
+                blocks.classList.add('hidden');
+                blocks.innerHTML = '';
+                return;
+            }
+
+            const values = Object.values(emotionsData).map(value => Number(value) || 0);
+            const sum = values.reduce((total, value) => total + value, 0);
+            let percentages;
+
+            if (sum >= 100 || values.some(value => value > 1)) {
+                percentages = {};
+                Object.keys(emotionsData).forEach(key => {
+                    percentages[key] = Math.round(Number(emotionsData[key]) || 0);
+                });
+            } else {
+                percentages = computePercentages(emotionsData) || {};
+            }
+
+            const total = Object.values(percentages).reduce((a, b) => a + b, 0);
+            if (total !== 100) {
+                const largestKey = Object.keys(percentages).reduce(
+                    (maxKey, key) => percentages[key] > (percentages[maxKey] ?? -Infinity) ? key : maxKey,
+                    null
+                );
+                if (largestKey) percentages[largestKey] += 100 - total;
+            }
+
+            const colors = {
+                joy: '#FFD166',
+                trust: '#7BE495',
+                anticipation: '#7EB6FF',
+                surprise: '#4CC9F0',
+                fear: '#9D4EDD',
+                anger: '#EF476F',
+                sadness: '#118AB2',
+                disgust: '#F98500'
+            };
+
+            const pairs = [
+                ['joy', 'fear'],
+                ['trust', 'anger'],
+                ['anticipation', 'sadness'],
+                ['surprise', 'disgust']
+            ];
+
+            blocks.innerHTML = pairs.map(([leftKey, rightKey]) => {
+                return [leftKey, rightKey].map(key => {
+                    const label = key.charAt(0).toUpperCase() + key.slice(1);
+                    const color = colors[key];
+                    const value = percentages[key] ?? 0;
+
+                    return `
+                        <div class="percent-block" style="background:${hexToRgba(color, 0.88)}">
+                            <div class="percent-left">
+                                <div class="percent-color" style="background:${color}"></div>
+                                <div class="percent-label">${label}</div>
+                            </div>
+                            <div class="percent-value">${value}%</div>
+                        </div>
+                    `;
+                }).join('');
+            }).join('');
+
+            blocks.classList.remove('hidden');
+        }
+
+        function renderRadarChart(emotionsData) {
+            const chartContainer = document.getElementById('chartContainer');
+
+            if (!emotionsData || Object.keys(emotionsData).length === 0) {
+                chartContainer.classList.add('hidden');
+                document.getElementById('percentBlocks').classList.add('hidden');
+                if (radarChartInstance) {
+                    radarChartInstance.destroy();
+                    radarChartInstance = null;
+                }
+                return;
+            }
+
+            chartContainer.classList.remove('hidden');
+
+            const context = document.getElementById('emotionRadarChart').getContext('2d');
+            if (radarChartInstance) radarChartInstance.destroy();
+
+            const dataValues = FORCED_LABEL_ORDER.map(key => Number(emotionsData[key]) || 0);
+
+            radarChartInstance = new Chart(context, {
+                type: 'radar',
+                data: {
+                    labels: FORCED_LABEL_ORDER,
+                    datasets: [{
+                        label: 'ระดับอารมณ์',
+                        data: dataValues,
+                        backgroundColor: 'rgba(102,126,234,0.25)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#764ba2',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#764ba2',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0,0,0,0.1)' },
+                            grid: { color: 'rgba(0,0,0,0.08)' },
+                            pointLabels: {
+                                font: { size: 11, family: "'Sarabun', sans-serif", weight: '600' },
+                                color: '#444'
+                            },
+                            ticks: { display: false },
+                            suggestedMin: 0,
+                            suggestedMax: 1
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            renderPercentageBlocks(emotionsData);
+        }
+
+        function initializeDiary() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            const saveButton = document.getElementById('saveButton');
+            const editButton = document.getElementById('editButton');
+            const newPageButton = document.getElementById('newPageButton');
+            const diaryTextarea = document.getElementById('diaryTextarea');
+            const dateInput = document.getElementById('dateInput');
+            const confirmationModal = document.getElementById('confirmationModal');
+            const confirmOkButton = document.getElementById('confirmOkButton');
+            const confirmCancelButton = document.getElementById('confirmCancelButton');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const deleteButton = document.getElementById('deleteButton');
+            const languageButtons = document.querySelectorAll('.ai-language-switch button');
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            dateInput.value = todayStr;
+
+            function setResponseLanguage(language) {
+                responseLanguage = language === 'en' ? 'en' : 'th';
+
+                languageButtons.forEach(button => {
+                    const active = button.dataset.language === responseLanguage;
+                    button.classList.toggle('active', active);
+                    button.setAttribute('aria-pressed', String(active));
+                });
+            }
+
+            function updatePageIndicator() {
+                const indicator = document.getElementById('pageIndicator');
+
+                if (entries.length === 0) {
+                    indicator.style.display = 'none';
+                    return;
+                }
+
+                indicator.style.display = 'inline';
+                const displayIndex = currentIndex >= 0 ? currentIndex + 1 : entries.length;
+                indicator.innerText = `Page ${displayIndex} / ${entries.length}`;
+            }
+
+            function updateNavButtons() {
+                if (entries.length <= 1) {
+                    prevBtn.classList.add('hidden');
+                    nextBtn.classList.add('hidden');
+                } else {
+                    prevBtn.classList.remove('hidden');
+                    nextBtn.classList.remove('hidden');
+                }
+
+                prevBtn.disabled = currentIndex <= 0;
+                nextBtn.disabled = currentIndex >= entries.length - 1;
+                updatePageIndicator();
+            }
+
+            function showEmptyEntry() {
+                diaryTextarea.value = '';
+                diaryTextarea.disabled = false;
+                diaryTextarea.placeholder = 'เริ่มพิมพ์ไดอารี่ของวันที่เลือกตรงนี้ได้เลย...';
+                document.getElementById('chatContainer').classList.add('hidden');
+
+                saveButton.classList.add('hidden');
+                editButton.classList.add('hidden');
+                deleteButton.classList.add('hidden');
+
+                setResponseLanguage('th');
+                isEditing = true;
+                renderRadarChart(null);
+                updatePageIndicator();
+            }
+
+            function showEntry(index) {
+                if (index < 0 || index >= entries.length) {
+                    showEmptyEntry();
+                    return;
+                }
+
+                const record = entries[index];
+                diaryTextarea.value = record.content || '';
+                setResponseLanguage(record.response_language || 'th');
+
+                if (!record.content) {
+                    diaryTextarea.disabled = false;
+                    saveButton.classList.remove('hidden');
+                    editButton.classList.add('hidden');
+                    isEditing = true;
+                    document.getElementById('chatContainer').classList.add('hidden');
+                    renderRadarChart(null);
+                } else {
+                    diaryTextarea.disabled = true;
+                    saveButton.classList.add('hidden');
+                    editButton.classList.remove('hidden');
+                    isEditing = false;
+
+                    document.getElementById('userChatText').innerText = record.content;
+                    let emotion = record.dominant_emotion || '-';
+
+                    if (record.detected_dyad && record.detected_dyad !== 'None') {
+                        emotion += ` | ${record.detected_dyad}`;
+                    }
+
+                    document.getElementById('emotionText').innerText = emotion;
+                    document.getElementById('aiChatResponse').innerText = record.ai_response || 'ไม่มีคำตอบ';
+                    document.getElementById('chatContainer').classList.remove('hidden');
+
+                    const parsed = parsePrimaryEmotions(record.primary_emotions);
+                    if (parsed) {
+                        renderRadarChart(parsed);
+
+                        const parsedPercent = parsePrimaryEmotions(record.primary_emotions_percent);
+                        if (parsedPercent) renderPercentageBlocks(parsedPercent);
+                    } else {
+                        renderRadarChart(null);
+                    }
+                }
+
+                deleteButton.classList.remove('hidden');
+                updatePageIndicator();
+            }
+
+            async function fetchEntriesForDate(selectedDate) {
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (!session) {
+                        window.location.replace('index.html');
+                        return;
+                    }
+
+                    const { data, error } = await supabaseClient
+                        .from('diary_entries')
+                        .select('*')
+                        .eq('entry_date', selectedDate)
+                        .eq('user_id', session.user.id)
+                        .order('created_at', { ascending: true });
+
+                    if (error) throw error;
+
+                    entries = data || [];
+
+                    if (entries.length > 0) {
+                        currentIndex = 0;
+                        showEntry(currentIndex);
+                    } else {
+                        currentIndex = -1;
+                        showEmptyEntry();
+                    }
+
+                    updateNavButtons();
+                } catch (error) {
+                    console.error('Error fetching entries:', error);
+                    alert('ไม่สามารถโหลดไดอารี่ได้ กรุณาลองอีกครั้ง');
+                }
+            }
+
+            async function analyzeDiary(text, language) {
+                const response = await fetch('http://127.0.0.1:5000/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, language })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (${response.status})`);
+                }
+
+                return data;
+            }
+
+            dateInput.addEventListener('change', event => {
+                fetchEntriesForDate(event.target.value);
+            });
+
+            prevBtn.addEventListener('click', () => {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    showEntry(currentIndex);
+                    updateNavButtons();
+                }
+            });
+
+            nextBtn.addEventListener('click', () => {
+                if (currentIndex < entries.length - 1) {
+                    currentIndex++;
+                    showEntry(currentIndex);
+                    updateNavButtons();
+                }
+            });
+
+            newPageButton.addEventListener('click', async () => {
+                newPageButton.disabled = true;
+
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (!session) {
+                        window.location.replace('index.html');
+                        return;
+                    }
+
+                    const { data, error } = await supabaseClient
+                        .from('diary_entries')
+                        .insert([{
+                            entry_date: dateInput.value || todayStr,
+                            content: '',
+                            user_id: session.user.id,
+                            response_language: 'th'
+                        }])
+                        .select();
+
+                    if (error) throw error;
+
+                    if (data?.length) {
+                        entries.push(data[0]);
+                        currentIndex = entries.length - 1;
+                        showEntry(currentIndex);
+                        diaryTextarea.disabled = false;
+                        diaryTextarea.focus();
+                        isEditing = true;
+                        updateNavButtons();
+                    }
+                } catch (error) {
+                    console.error('Error creating new page:', error);
+                    alert('ไม่สามารถสร้างหน้าใหม่ได้ กรุณาลองอีกครั้ง');
+                } finally {
+                    newPageButton.disabled = false;
+                }
+            });
+
+            editButton.addEventListener('click', () => {
+                diaryTextarea.disabled = false;
+                diaryTextarea.focus();
+                editButton.classList.add('hidden');
+                saveButton.classList.remove('hidden');
+                isEditing = true;
+            });
+
+            deleteButton.addEventListener('click', async () => {
+                const currentEntry = entries[currentIndex];
+                if (!currentEntry?.id) return;
+
+                if (!confirm('ต้องการลบบันทึกนี้จริงหรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
+                    return;
+                }
+
+                try {
+                    const { error } = await supabaseClient
+                        .from('diary_entries')
+                        .delete()
+                        .eq('id', currentEntry.id);
+
+                    if (error) throw error;
+
+                    entries.splice(currentIndex, 1);
+
+                    if (entries.length === 0) {
+                        currentIndex = -1;
+                        showEmptyEntry();
+                    } else {
+                        if (currentIndex >= entries.length) currentIndex = entries.length - 1;
+                        showEntry(currentIndex);
+                    }
+
+                    updateNavButtons();
+                    alert('ลบบันทึกเรียบร้อยแล้ว');
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    alert('เกิดข้อผิดพลาดขณะลบ กรุณาลองใหม่');
+                }
+            });
+
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await supabaseClient.auth.signOut();
+                } catch (error) {
+                    console.error('Logout error:', error);
+                } finally {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('index.html');
+                }
+            });
+
+            diaryTextarea.addEventListener('input', () => {
+                if (!diaryTextarea.disabled && diaryTextarea.value.trim()) {
+                    saveButton.classList.remove('hidden');
+                } else {
+                    saveButton.classList.add('hidden');
+                }
+            });
+
+            languageButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const requestedLanguage = button.dataset.language;
+                    const text = diaryTextarea.value.trim();
+
+                    if (!text || requestedLanguage === responseLanguage) return;
+
+                    const previousLanguage = responseLanguage;
+                    setResponseLanguage(requestedLanguage);
+
+                    const responseElement = document.getElementById('aiChatResponse');
+                    responseElement.innerText = requestedLanguage === 'en'
+                        ? 'Generating response...'
+                        : 'กำลังประมวลผลคำตอบ...';
+
+                    languageButtons.forEach(item => { item.disabled = true; });
+
+                    try {
+                        const data = await analyzeDiary(text, requestedLanguage);
+                        responseElement.innerText = data.reply_message || '';
+
+                        const currentEntry = entries[currentIndex];
+
+                        // บันทึกภาษาและคำตอบใหม่เฉพาะ entry ที่บันทึกแล้วและไม่ได้อยู่ในโหมดแก้ไข
+                        // ถ้ากำลังแก้ไข เนื้อหาและคำตอบจะถูกบันทึกพร้อมกันเมื่อกด "บันทึก"
+                        if (currentEntry?.id && !isEditing) {
+                            const { error } = await supabaseClient
+                                .from('diary_entries')
+                                .update({
+                                    ai_response: data.reply_message,
+                                    response_language: requestedLanguage
+                                })
+                                .eq('id', currentEntry.id);
+
+                            if (error) throw error;
+
+                            entries[currentIndex] = {
+                                ...currentEntry,
+                                ai_response: data.reply_message,
+                                response_language: requestedLanguage
+                            };
+                        }
+                    } catch (error) {
+                        console.error('Error changing AI response language:', error);
+                        setResponseLanguage(previousLanguage);
+                        responseElement.innerText = previousLanguage === 'en'
+                            ? 'Could not change the response language. Please try again.'
+                            : 'เปลี่ยนภาษาไม่สำเร็จ กรุณาลองอีกครั้ง';
+                    } finally {
+                        languageButtons.forEach(item => { item.disabled = false; });
+                    }
+                });
+            });
+
+            saveButton.addEventListener('click', () => {
+                if (!dateInput.value) {
+                    alert('กรุณาเลือกวันที่ก่อนบันทึกค่ะ');
+                    return;
+                }
+
+                if (!diaryTextarea.value.trim()) {
+                    alert('กรุณาเขียนไดอารี่ก่อนบันทึกค่ะ');
+                    return;
+                }
+
+                confirmationModal.classList.add('show');
+            });
+
+            confirmOkButton.addEventListener('click', async () => {
+                const diaryText = diaryTextarea.value.trim();
+                const selectedDate = dateInput.value;
+                const languageForSave = responseLanguage;
+
+                confirmationModal.classList.remove('show');
+
+                document.getElementById('userChatText').innerText = diaryText;
+                document.getElementById('emotionText').innerText = 'กำลังวิเคราะห์...';
+                document.getElementById('aiChatResponse').innerText = languageForSave === 'en'
+                    ? 'Generating a response...'
+                    : 'กำลังประมวลผลคำตอบใหม่จากใจน้า... ⏳';
+                document.getElementById('chatContainer').classList.remove('hidden');
+
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (!session) {
+                        window.location.replace('index.html');
+                        return;
+                    }
+
+                    const data = await analyzeDiary(diaryText, languageForSave);
+                    const parsedPrimary = parsePrimaryEmotions(data.primary_emotions) || {};
+                    const percentObject = computePercentages(parsedPrimary) || {};
+
+                    const recordPayload = {
+                        entry_date: selectedDate,
+                        content: diaryText,
+                        ai_response: data.reply_message || '',
+                        response_language: languageForSave,
+                        dominant_emotion: data.dominant_emotion_th || data.dominant_emotion || '',
+                        detected_dyad: data.detected_dyad || '',
+                        primary_emotions: parsedPrimary,
+                        primary_emotions_percent: percentObject,
+                        user_id: session.user.id,
+                        updated_at: new Date().toISOString()
+                    };
+
+                    const currentEntry = entries[currentIndex];
+                    let dbError = null;
+
+                    if (currentEntry?.id && isEditing) {
+                        const { error } = await supabaseClient
+                            .from('diary_entries')
+                            .update(recordPayload)
+                            .eq('id', currentEntry.id);
+
+                        dbError = error;
+
+                        if (!dbError) {
+                            entries[currentIndex] = { ...currentEntry, ...recordPayload };
+                        }
+                    } else {
+                        const { data: insertedEntries, error } = await supabaseClient
+                            .from('diary_entries')
+                            .insert([recordPayload])
+                            .select();
+
+                        dbError = error;
+
+                        if (!dbError && insertedEntries?.length) {
+                            entries.push(insertedEntries[0]);
+                            currentIndex = entries.length - 1;
+                        }
+                    }
+
+                    if (dbError) throw dbError;
+
+                    let displayEmotion = recordPayload.dominant_emotion;
+                    if (data.detected_dyad && data.detected_dyad !== 'None') {
+                        displayEmotion += ` | ${data.detected_dyad}`;
+                    }
+
+                    document.getElementById('userChatText').innerText = diaryText;
+                    document.getElementById('emotionText').innerText = displayEmotion || '-';
+                    document.getElementById('aiChatResponse').innerText = recordPayload.ai_response;
+
+                    setResponseLanguage(languageForSave);
+                    renderRadarChart(parsedPrimary);
+
+                    diaryTextarea.disabled = true;
+                    saveButton.classList.add('hidden');
+                    editButton.classList.remove('hidden');
+                    isEditing = false;
+
+                    if (entries[currentIndex]) {
+                        entries[currentIndex] = {
+                            ...entries[currentIndex],
+                            ...recordPayload
+                        };
+                    }
+
+                    updateNavButtons();
+                    alert(`🎉 บันทึก/แก้ไข ไดอารี่ประจำวันที่ ${selectedDate} เรียบร้อยแล้วค่ะ!`);
+                } catch (error) {
+                    console.error('Error connecting to AI or Supabase:', error);
+                    document.getElementById('aiChatResponse').innerText =
+                        'ไม่สามารถบันทึกหรือวิเคราะห์ไดอารี่ได้ กรุณาลองอีกครั้ง';
+                    alert(`เกิดข้อผิดพลาด: ${error.message || 'กรุณาลองอีกครั้ง'}`);
+                }
+            });
+
+            confirmCancelButton.addEventListener('click', () => {
+                confirmationModal.classList.remove('show');
+            });
+
+            confirmationModal.addEventListener('click', event => {
+                if (event.target === confirmationModal) {
+                    confirmationModal.classList.remove('show');
+                }
+            });
+
+            fetchEntriesForDate(todayStr);
+        }
+    </script>
+</body>
+</html>

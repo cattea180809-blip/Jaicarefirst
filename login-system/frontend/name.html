@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>User Name - JaiCare</title>
     <style>
+        .running-cat {
+    width: fit-content;
+    margin: 0 auto 12px;
+    font-size: 42px;
+    line-height: 1;
+    animation: catRun 0.45s ease-in-out infinite alternate;
+    }
+
+    @keyframes catRun {
+    from {
+        transform: translateX(-8px) rotate(-8deg);
+        }
+    to {
+        transform: translateX(8px) rotate(8deg);
+    }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+    .running-cat {
+        animation: none;
+        }
+    }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         html, body {
@@ -284,14 +306,15 @@
 
     <!-- Name Container -->
     <div class="name-container">
+        <div class="running-cat" aria-label="แมวกำลังวิ่ง" role="img">🐈</div>
         <h1>Welcome!</h1>
         <p>What's your name?</p>
 
         <div id="statusMessage" class="message-box"></div>
 
         <div class="form-group">
-            <label for="Name">Name</label>
-            <input type="text" id="Name" placeholder="Enter your name" required />
+            <label for="fullName">Name</label>
+        <input type="text" id="fullName" placeholder="Enter your name" required />
         </div>
 
         <button type="button" class="continue-btn" id="continueBtn">

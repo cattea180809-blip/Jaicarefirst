@@ -106,7 +106,12 @@
     }
 
     .nav-box a:hover::before { filter: brightness(0) invert(1); }
-    .nav-box.logout button::before { content: '🚪'; margin-right: 8px; font-size: 20px; }
+
+    .nav-box.logout button::before {
+      content: '🚪';
+      margin-right: 8px;
+      font-size: 20px;
+    }
 
     .center-content {
       flex: 1;
@@ -198,6 +203,7 @@
     }
 
     .btn:hover { filter: brightness(0.96); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .btn.secondary {
       background: #f0f0f0;
@@ -242,6 +248,7 @@
       display: flex;
       gap: 12px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .stats {
@@ -264,7 +271,7 @@
 
     .small-muted {
       font-size: 13px;
-      color: #888;
+      color: #555;
       margin-top: 6px;
     }
 
@@ -273,22 +280,21 @@
         flex-direction: column;
         align-items: center;
       }
+
       .sidebar {
         order: 2;
         width: 100%;
         max-width: 500px;
       }
+
       .center-content {
         order: 1;
         width: 100%;
         min-height: 0;
       }
-      .container {
-        padding: 18px;
-      }
-      .profile-card {
-        flex: 1 1 100%;
-      }
+
+      .container { padding: 18px; }
+      .profile-card { flex: 1 1 100%; }
     }
   </style>
 </head>
@@ -322,7 +328,6 @@
 
             <div style="width:100%; text-align:center;">
               <label for="avatarFile">เลือกรูปโปรไฟล์</label>
-
               <input id="avatarFile" type="file" accept="image/*" hidden />
 
               <div class="avatar-actions">
@@ -343,8 +348,13 @@
             </div>
 
             <div class="field">
-              <label for="nicknameInput">ชื่อเล่น</label>
-              <input id="nicknameInput" type="text" placeholder="ชื่อเล่น" />
+              <label for="nicknameInput">ชื่อ</label>
+              <input
+                id="nicknameInput"
+                type="text"
+                placeholder="ชื่อของคุณ"
+                autocomplete="name"
+              />
             </div>
 
             <div class="field">
@@ -353,7 +363,9 @@
             </div>
 
             <div class="actions">
-              <button id="saveProfileBtn" class="btn" type="button">บันทึกข้อมูลโปรไฟล์</button>
+              <button id="saveProfileBtn" class="btn" type="button">
+                บันทึกข้อมูลโปรไฟล์
+              </button>
               <div id="saveStatus" class="small-muted" role="status" aria-live="polite"></div>
             </div>
 
@@ -368,15 +380,20 @@
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://moubjbxzopdqwoufpont.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4';
+      const SUPABASE_URL = "https://moubjbxzopdqwoufpont.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4";
+
+      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     document.addEventListener('DOMContentLoaded', async () => {
       let supabaseClient = null;
 
       try {
         if (window.supabase && typeof window.supabase.createClient === 'function') {
-          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          supabaseClient = window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
+          );
         }
       } catch (error) {
         console.error('Error initializing Supabase client:', error);
@@ -423,7 +440,9 @@
         }
 
         try {
-          const savedAvatar = localStorage.getItem(avatarStorageKey(currentUser.id));
+          const savedAvatar = localStorage.getItem(
+            avatarStorageKey(currentUser.id)
+          );
           showAvatar(savedAvatar);
         } catch (error) {
           console.error('Unable to load saved profile image:', error);
@@ -432,12 +451,20 @@
       }
 
       chooseAvatarBtn.addEventListener('click', () => {
-        avatarFile.click();
+        if (currentUser) {
+          avatarFile.click();
+        }
       });
 
       avatarFile.addEventListener('change', () => {
         const file = avatarFile.files && avatarFile.files[0];
         if (!file) return;
+
+        if (!currentUser) {
+          uploadMsg.textContent = 'กรุณาเข้าสู่ระบบก่อนเลือกรูป';
+          avatarFile.value = '';
+          return;
+        }
 
         if (!file.type.startsWith('image/')) {
           uploadMsg.textContent = 'กรุณาเลือกไฟล์รูปภาพ';
@@ -446,6 +473,7 @@
         }
 
         const maxFileSize = 2 * 1024 * 1024;
+
         if (file.size > maxFileSize) {
           uploadMsg.textContent = 'รูปมีขนาดใหญ่เกินไป กรุณาเลือกไฟล์ไม่เกิน 2 MB';
           avatarFile.value = '';
@@ -456,7 +484,10 @@
 
         reader.onload = () => {
           try {
-            localStorage.setItem(avatarStorageKey(currentUser.id), reader.result);
+            localStorage.setItem(
+              avatarStorageKey(currentUser.id),
+              reader.result
+            );
             showAvatar(reader.result);
             uploadMsg.textContent = 'เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว';
           } catch (error) {
@@ -486,55 +517,6 @@
         uploadMsg.textContent = 'ลบรูปโปรไฟล์แล้ว';
       });
 
-      async function saveProfileData() {
-        if (!supabaseClient || !currentUser) {
-          alert('ต้องล็อกอินเพื่อบันทึกข้อมูล');
-          return;
-        }
-
-        const payload = {
-          user_id: currentUser.id,
-          nickname: nicknameInput.value.trim() || null,
-          email: currentUser.email || null,
-          updated_at: new Date().toISOString()
-        };
-
-        try {
-          const { error } = await supabaseClient
-            .from('profiles')
-            .upsert([payload], { onConflict: 'user_id' });
-
-          if (error) throw error;
-
-          saveStatus.textContent = 'บันทึกเรียบร้อย';
-          setTimeout(() => {
-            saveStatus.textContent = '';
-          }, 1800);
-
-          await loadProfileAndStats();
-        } catch (error) {
-          console.error('Error saving profile:', error);
-          alert('เกิดข้อผิดพลาดขณะบันทึกข้อมูล');
-        }
-      }
-
-      saveProfileBtn.addEventListener('click', saveProfileData);
-
-      async function signOutAndRedirect() {
-        try {
-          if (supabaseClient) {
-            await supabaseClient.auth.signOut();
-          }
-        } catch (error) {
-          console.error('Sign out error:', error);
-        }
-
-        window.location.replace('index.html');
-      }
-
-      logoutBtn.addEventListener('click', signOutAndRedirect);
-      logoutSidebarBtn.addEventListener('click', signOutAndRedirect);
-
       async function checkAuth() {
         if (!supabaseClient) {
           alert('เชื่อมต่อระบบไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
@@ -543,9 +525,10 @@
 
         try {
           const { data, error } = await supabaseClient.auth.getSession();
+
           if (error) throw error;
 
-          if (!data || !data.session) {
+          if (!data?.session?.user) {
             window.location.replace('index.html');
             return null;
           }
@@ -567,26 +550,16 @@
         }
 
         emailInput.value = currentUser.email || '';
+
+        // อ่านชื่อที่บันทึกจาก name.html หรือจากการแก้ไขในหน้าโปรไฟล์
+        nicknameInput.value =
+          currentUser.user_metadata?.full_name ||
+          currentUser.user_metadata?.display_name ||
+          '';
+
         loadSavedAvatar();
 
-        try {
-          const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .limit(1);
-
-          if (error) {
-            console.error('Error loading profile:', error);
-          } else if (data && data.length > 0) {
-            nicknameInput.value = data[0].nickname || '';
-          } else {
-            nicknameInput.value = '';
-          }
-        } catch (error) {
-          console.error('Error reading profile:', error);
-        }
-
+        // โหลดจำนวนบันทึกในไดอารี่
         try {
           const { data, error } = await supabaseClient
             .from('diary_entries')
@@ -601,6 +574,65 @@
           entryCountEl.textContent = '0';
         }
       }
+
+      async function saveProfileData() {
+        if (!supabaseClient || !currentUser) {
+          saveStatus.textContent = 'กรุณาเข้าสู่ระบบก่อนบันทึก';
+          return;
+        }
+
+        const fullName = nicknameInput.value.trim();
+
+        if (!fullName) {
+          saveStatus.textContent = 'กรุณากรอกชื่อก่อนบันทึก';
+          nicknameInput.focus();
+          return;
+        }
+
+        saveProfileBtn.disabled = true;
+        saveStatus.textContent = 'กำลังบันทึก...';
+
+        try {
+          const { data, error } = await supabaseClient.auth.updateUser({
+            data: {
+              full_name: fullName,
+              display_name: fullName
+            }
+          });
+
+          if (error) throw error;
+
+          if (data?.user) {
+            currentUser = data.user;
+          }
+
+          saveStatus.textContent = 'บันทึกชื่อเรียบร้อยแล้ว';
+        } catch (error) {
+          console.error('Error saving name:', error);
+          saveStatus.textContent =
+            `บันทึกไม่สำเร็จ: ${error.message || 'กรุณาลองอีกครั้ง'}`;
+        } finally {
+          saveProfileBtn.disabled = false;
+        }
+      }
+
+      saveProfileBtn.addEventListener('click', saveProfileData);
+
+      async function signOutAndRedirect() {
+        try {
+          if (supabaseClient) {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) console.error('Sign out error:', error);
+          }
+        } catch (error) {
+          console.error('Sign out error:', error);
+        }
+
+        window.location.replace('index.html');
+      }
+
+      logoutBtn.addEventListener('click', signOutAndRedirect);
+      logoutSidebarBtn.addEventListener('click', signOutAndRedirect);
 
       await loadProfileAndStats();
     });

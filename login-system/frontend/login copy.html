@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Login - JaiCare</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        /* background image */
+        .bg-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        /* login container on top */
+        .login-container { 
+            position: relative;
+            z-index: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Fade out animation when transitioning */
+        body.transition-out {
+            animation: fadeOut 0.6s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .login-container h1 { 
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .login-container p.subtitle { 
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group { 
+            margin-bottom: 20px;
+        }
+
+        .form-group label { 
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input { 
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus { 
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Forgot Password Link Styling */
+        .forgot-password-wrap {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: -12px;
+            margin-bottom: 20px;
+        }
+
+        .text-link {
+            background: none;
+            border: none;
+            color: #667eea;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 0.3s;
+            padding: 0;
+        }
+
+        .text-link:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        .message-box { 
+            padding: 12px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+            animation: slideDown 0.3s;
+            line-height: 1.4;
+        }
+
+        .message-box.show { 
+            display: block;
+        }
+
+        .message-box.error { 
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message-box.success { 
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        @keyframes slideDown { 
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-btn { 
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .login-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .login-btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .button-text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .login-btn.loading .button-text {
+            display: none;
+        }
+
+        .spinner {
+            display: none;
+            position: relative;
+            z-index: 1;
+            width: 20px;
+            height: 20px;
+        }
+
+        .login-btn.loading .spinner {
+            display: block;
+        }
+
+        .spinner::after {
+            content: '';
+            display: block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            border-color: white transparent white transparent;
+            animation: spin 1.2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .register-link { 
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .register-link a { 
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .register-link a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 420px) {
+            .login-container { 
+                padding: 24px;
+                margin: 12px;
+            }
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Background Image -->
+    <div class="bg-image" id="bgImage" aria-hidden="true"></div>
+
+    <!-- Main Container -->
+    <div class="login-container">
+        <h1>JaiCare</h1>
+        <p class="subtitle" id="formSubtitle">Sign in to your account</p>
+
+        <div id="statusMessage" class="message-box"></div>
+
+        <!-- 1. LOGIN VIEW -->
+        <div id="loginView">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="Enter your email" required />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password" required />
+            </div>
+
+            <div class="forgot-password-wrap">
+                <button type="button" class="text-link" id="showForgotBtn">Forgot Password?</button>
+            </div>
+
+            <button type="button" class="login-btn" id="loginBtn">
+                <span class="button-text">Login</span>
+                <div class="spinner"></div>
+            </button>
+
+            <div class="register-link">
+                Don't have an account? <a href="register.html">Register here</a>
+            </div>
+        </div>
+
+        <!-- 2. FORGOT PASSWORD VIEW -->
+        <div id="forgotView" class="hidden">
+            <div class="form-group">
+                <label for="resetEmail">Email Address</label>
+                <input type="email" id="resetEmail" placeholder="Enter your registered email" required />
+            </div>
+
+            <button type="button" class="login-btn" id="sendResetBtn">
+                <span class="button-text">Send Reset Link</span>
+                <div class="spinner"></div>
+            </button>
+
+            <div class="register-link">
+                Remember your password? <button type="button" class="text-link" id="backToLoginBtn">Back to Login</button>
+            </div>
+        </div>
+
+        <!-- 3. UPDATE NEW PASSWORD VIEW (Shown after clicking email link) -->
+        <div id="updatePasswordView" class="hidden">
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password (min 6 characters)" required />
+            </div>
+
+            <div class="form-group">
+                <label for="confirmNewPassword">Confirm New Password</label>
+                <input type="password" id="confirmNewPassword" placeholder="Confirm your new password" required />
+            </div>
+
+            <button type="button" class="login-btn" id="updatePasswordBtn">
+                <span class="button-text">Update Password</span>
+                <div class="spinner"></div>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://moubjbxzopdqwoufpont.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdWJqYnh6b3BkcXdvdWZwb250Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzQxMTEsImV4cCI6MjEwMDcxMDExMX0.pmcJWr2yamp--6Zo1Sf2QGfdzBL2Rwri1a70ExlE1U4";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function showMessage(el, text, type = 'error') {
+            el.textContent = text;
+            el.className = `message-box ${type} show`;
+        }
+
+        function clearMessage(el) {
+            el.textContent = '';
+            el.className = 'message-box';
+        }
+
+        function setButtonLoading(btn, isLoading) {
+            btn.disabled = isLoading;
+            if (isLoading) {
+                btn.classList.add('loading');
+            } else {
+                btn.classList.remove('loading');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Views & Subtitle
+            const loginView = document.getElementById('loginView');
+            const forgotView = document.getElementById('forgotView');
+            const updatePasswordView = document.getElementById('updatePasswordView');
+            const formSubtitle = document.getElementById('formSubtitle');
+            const statusMessage = document.getElementById('statusMessage');
+            const bgDiv = document.getElementById('bgImage');
+
+            // Login Elements
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const loginBtn = document.getElementById('loginBtn');
+            const showForgotBtn = document.getElementById('showForgotBtn');
+
+            // Forgot Password Elements
+            const resetEmailInput = document.getElementById('resetEmail');
+            const sendResetBtn = document.getElementById('sendResetBtn');
+            const backToLoginBtn = document.getElementById('backToLoginBtn');
+
+            // Update Password Elements
+            const newPasswordInput = document.getElementById('newPassword');
+            const confirmNewPasswordInput = document.getElementById('confirmNewPassword');
+            const updatePasswordBtn = document.getElementById('updatePasswordBtn');
+
+            let isRecoveryMode = false;
+
+            // Load background image
+            const bgPath = 'JaiCarepic.jpg';
+            const img = new Image();
+            img.onload = () => {
+                bgDiv.style.backgroundImage = `url('${bgPath}')`;
+            };
+            img.src = bgPath;
+
+            // Switch View Helper
+            function switchView(viewName) {
+                clearMessage(statusMessage);
+                loginView.classList.add('hidden');
+                forgotView.classList.add('hidden');
+                updatePasswordView.classList.add('hidden');
+
+                if (viewName === 'login') {
+                    loginView.classList.remove('hidden');
+                    formSubtitle.textContent = 'Sign in to your account';
+                } else if (viewName === 'forgot') {
+                    forgotView.classList.remove('hidden');
+                    formSubtitle.textContent = 'Reset your password';
+                    resetEmailInput.value = emailInput.value.trim();
+                } else if (viewName === 'update') {
+                    updatePasswordView.classList.remove('hidden');
+                    formSubtitle.textContent = 'Create a new password';
+                }
+            }
+
+            // Listen for Supabase Password Recovery Event (when user clicks link in email)
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (event === 'PASSWORD_RECOVERY') {
+                    isRecoveryMode = true;
+                    switchView('update');
+                    showMessage(statusMessage, 'Please enter your new password below.', 'success');
+                }
+            });
+
+            // Check existing session (skip redirect if user is resetting password)
+            if (!window.location.hash.includes('type=recovery')) {
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session && !isRecoveryMode) {
+                        window.location.replace('dashboard.html');
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error checking session on load:', err);
+                }
+            } else {
+                isRecoveryMode = true;
+                switchView('update');
+            }
+
+            // View Switch Events
+            showForgotBtn.addEventListener('click', () => switchView('forgot'));
+            backToLoginBtn.addEventListener('click', () => switchView('login'));
+
+            // 1. Handle Login
+            loginBtn.addEventListener('click', async () => {
+                const email = emailInput.value.trim().toLowerCase();
+                const password = passwordInput.value;
+
+                if (!email || !password) {
+                    showMessage(statusMessage, 'Please fill in all fields.', 'error');
+                    return;
+                }
+
+                setButtonLoading(loginBtn, true);
+
+                try {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: password,
+                    });
+
+                    if (error) {
+                        showMessage(statusMessage, error.message || 'Incorrect email or password.', 'error');
+                        setButtonLoading(loginBtn, false);
+                    } else if (data && data.session) {
+                        showMessage(statusMessage, 'Login successful! Redirecting...', 'success');
+                        setTimeout(() => {
+                            document.body.classList.add('transition-out');
+                            setTimeout(() => {
+                                window.location.href = 'dashboard.html';
+                            }, 600);
+                        }, 800);
+                    } else {
+                        showMessage(statusMessage, 'Unable to sign in. Please try again.', 'error');
+                        setButtonLoading(loginBtn, false);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showMessage(statusMessage, 'An error occurred. Please try again.', 'error');
+                    setButtonLoading(loginBtn, false);
+                }
+            });
+
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') loginBtn.click();
+            });
+
+            // 2. Handle Send Password Reset Link
+            sendResetBtn.addEventListener('click', async () => {
+                const email = resetEmailInput.value.trim().toLowerCase();
+
+                if (!email) {
+                    showMessage(statusMessage, 'Please enter your email address.', 'error');
+                    return;
+                }
+
+                setButtonLoading(sendResetBtn, true);
+
+                try {
+                    // Redirect user back to this exact page after clicking email link
+                    const redirectUrl = window.location.origin + window.location.pathname;
+                    
+                    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                        redirectTo: redirectUrl,
+                    });
+
+                    if (error) {
+                        showMessage(statusMessage, error.message || 'Failed to send reset link.', 'error');
+                    } else {
+                        showMessage(
+                            statusMessage, 
+                            'Password reset link sent! Please check your email inbox (and spam folder).', 
+                            'success'
+                        );
+                        resetEmailInput.value = '';
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showMessage(statusMessage, 'An error occurred. Please try again.', 'error');
+                } finally {
+                    setButtonLoading(sendResetBtn, false);
+                }
+            });
+
+            resetEmailInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendResetBtn.click();
+            });
+
+            // 3. Handle Update New Password
+            updatePasswordBtn.addEventListener('click', async () => {
+                const newPassword = newPasswordInput.value;
+                const confirmPassword = confirmNewPasswordInput.value;
+
+                if (!newPassword || !confirmPassword) {
+                    showMessage(statusMessage, 'Please fill in both password fields.', 'error');
+                    return;
+                }
+
+                if (newPassword.length < 6) {
+                    showMessage(statusMessage, 'Password must be at least 6 characters long.', 'error');
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    showMessage(statusMessage, 'Passwords do not match.', 'error');
+                    return;
+                }
+
+                setButtonLoading(updatePasswordBtn, true);
+
+                try {
+                    const { error } = await supabaseClient.auth.updateUser({
+                        password: newPassword
+                    });
+
+                    if (error) {
+                        showMessage(statusMessage, error.message || 'Failed to update password.', 'error');
+                        setButtonLoading(updatePasswordBtn, false);
+                    } else {
+                        showMessage(statusMessage, 'Password updated successfully! Redirecting to dashboard...', 'success');
+                        setTimeout(() => {
+                            window.location.replace('dashboard.html');
+                        }, 1500);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showMessage(statusMessage, 'An error occurred while updating password.', 'error');
+                    setButtonLoading(updatePasswordBtn, false);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
