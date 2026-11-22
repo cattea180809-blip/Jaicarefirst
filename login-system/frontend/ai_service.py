@@ -2,7 +2,7 @@ import json
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import google.generativeai as genai
 
@@ -17,6 +17,7 @@ CORS(
             "origins": [
                 "http://localhost:5500",
                 "http://127.0.0.1:5500",
+                "https://jaicare-seven.vercel.app",
             ],
             "methods": ["POST", "OPTIONS"],
             "allow_headers": ["Content-Type"],
@@ -32,12 +33,10 @@ if not API_KEY:
     )
 
 genai.configure(api_key=API_KEY)
-
 gemini_model = genai.GenerativeModel("gemini-3.5-flash-lite")
 
 
 def detect_fallback_language(text):
-    """ใช้เลือกภาษาให้ข้อความสำรองเท่านั้น กรณีตอบกลับจาก AI ไม่มีค่า"""
     if any("\u0e00" <= char <= "\u0e7f" for char in text):
         return "th"
     return "en"
@@ -75,6 +74,7 @@ Write detected_dyad, dominant_emotion_th, and reply_message in English.
 Do not write Thai in those values.
 """
         fallback_language = "en"
+
     elif language == "th":
         language_instruction = """
 ภาษาที่ต้องการคือภาษาไทย
@@ -82,6 +82,7 @@ Do not write Thai in those values.
 ห้ามเขียนค่าเหล่านี้เป็นภาษาอังกฤษ
 """
         fallback_language = "th"
+
     else:
         language_instruction = """
 Detect the primary language used in the diary entry.
@@ -133,7 +134,6 @@ Choose reasonable scores based on the diary entry.
         response = gemini_model.generate_content(prompt)
         raw_text = (response.text or "").strip()
 
-        # รองรับกรณีโมเดลครอบ JSON ด้วย Markdown code fence
         if raw_text.startswith("```"):
             raw_text = raw_text.replace("```json", "", 1)
             raw_text = raw_text.replace("```", "")
